@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Repositories;
+
+use App\Models\Course;
+
+class EloquentCourseRepository implements CourseRepositoryInterface
+{
+    public function all()
+    {
+        return Course::all();
+    }
+
+    public function paginate(int $perPage = 15, ?int $page = null)
+    {
+        return Course::paginate($perPage, ['*'], 'page', $page);
+    }
+
+    public function find(string $id)
+    {
+        return Course::findOrFail($id);
+    }
+
+    public function create(array $data)
+    {
+        return Course::create($data);
+    }
+
+    public function update(string $id, array $data)
+    {
+        $c = Course::findOrFail($id);
+        $c->update($data);
+        return $c;
+    }
+
+    public function toggleStatus(string $id)
+    {
+        $c = Course::findOrFail($id);
+        $c->status = $c->status === 'Active' ? 'Inactive' : 'Active';
+        $c->save();
+        return $c;
+    }
+}
