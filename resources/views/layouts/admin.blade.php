@@ -7,6 +7,7 @@
     <title>@yield('title', 'Admin - HR System')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
       /* Sidebar layout with collapse behavior */
       body { min-height: 100vh; }
@@ -103,6 +104,25 @@
             </li>
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" href="{{ route('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i><span class="label">Dashboard</span></a>
+            </li>
+            <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ml-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                ATTENDANCE
+            </div>
+
+            <li class="nav-item">
+                <a href="{{ route('admin.attendance.create') }}" 
+                  class="nav-link {{ request()->routeIs('admin.attendance.create') ? 'active' : '' }} d-flex align-items-center">
+                    <i class="fas fa-calendar-check mr-3" style="width: 25px; text-align: center; margin-left: -3%; margin-right: 2%;"></i>
+                    <span>Mark Attendance</span>
+                </a>
+            </li>
+
+            <li class="nav-item">
+                <a href="{{ route('admin.attendance.index') }}" 
+                  class="nav-link {{ request()->routeIs('admin.attendance.index') ? 'active' : '' }} d-flex align-items-center">
+                    <i class="fas fa-history mr-3" style="width: 25px; text-align: center; margin-left: -3%; margin-right: 2%;"></i>
+                    <span>Attendance Logs</span>
+                </a>
             </li>
           </ul>
         </aside>

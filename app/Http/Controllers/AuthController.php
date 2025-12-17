@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+// 1. ADD THIS IMPORT AT THE TOP
+use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
-    public function showLogin()
+    public function showLogin() 
     {
         return view('auth.login');
     }
@@ -27,21 +29,26 @@ class AuthController extends Controller
             return back()->withErrors(['credentials' => 'Invalid username or password'])->withInput();
         }
 
-        // store minimal session
+        // 2. THE CRITICAL FIX: Log the user into Laravel's Auth system
+        Auth::login($user);
+
+        // 3. Keep your manual session for the sidebar/UI if needed
         session(["user_id" => $user->user_id, "user_name" => $user->user_name, "role" => $user->role]);
 
-        // Allow both Admin and Staff roles to access the admin dashboard
         if (in_array($user->role, ['Admin', 'Staff'])) {
             return redirect()->route('admin.dashboard');
         }
 
-        // Other roles (if any) are not allowed
         return redirect()->route('login')->withErrors(['access' => 'You do not have access']);
     }
 
     public function logout(Request $request)
     {
-        $request->session()->flush();
+        // 4. FIX: Use official Logout
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
         return redirect()->route('login');
     }
 }
