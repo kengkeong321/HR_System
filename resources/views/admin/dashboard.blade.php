@@ -16,6 +16,7 @@
         <li><a href="{{ route('admin.faculties.index') }}">Manage Faculties</a></li>
         <li><a href="{{ route('admin.departments.index') }}">Manage Departments</a></li>
         <li><a href="{{ route('admin.courses.index') }}">Manage Courses</a></li>
+        <li><a href="{{ url('/admin/attendance') }}">Mark Attendance</a></li>
       </ul>
     </div>
   </div>
