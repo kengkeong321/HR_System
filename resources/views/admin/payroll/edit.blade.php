@@ -3,10 +3,10 @@
 @section('title', 'Edit Payroll Record')
 
 @section('content')
-{{-- Hidden data for JavaScript calculations fetched from payroll_configs --}}
+{{-- 1. Rates for JS Math (Cleaned up duplicate) --}}
 <div id="payroll-rates"
-    data-epf="{{ $configs['staff_epf_rate'] ?? 11.00 }}"
-    data-eis="{{ $configs['eis_rate'] ?? 0.20 }}"
+    data-epf="{{ $configs['staff_epf_rate'] ?? 25.00 }}"
+    data-eis="{{ $configs['eis_rate'] ?? 0.30 }}"
     style="display:none;">
 </div>
 
@@ -48,31 +48,30 @@
                         <input type="hidden" name="attendance_count_hidden" id="attendance_count_hidden"
                             value="{{ old('attendance_count_hidden', $payroll->attendance_count ?? $daysPresent) }}">
 
-                        {{-- SECTION B: PRIMARY EARNINGS (Fixed monthly or daily rate) --}}
+                        {{-- SECTION B: PRIMARY EARNINGS --}}
                         <div class="row mb-4">
                             <div class="col-md-3">
                                 <label class="form-label fw-bold">Basic Salary (RM)</label>
+                                {{-- Added calc-trigger class below --}}
                                 <input type="number" step="0.01" id="basic_salary" name="basic_salary" class="form-control form-control-lg calc-trigger" value="{{ $payroll->basic_salary }}">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold text-danger">EPF</label>
-                                <input type="number" id="epf_employee" class="form-control form-control-lg bg-light" readonly>
+                                <input type="number" id="epf_employee" value="0.00" class="form-control form-control-lg bg-light fw-bold text-danger" readonly>
                             </div>
-                            {{-- NEW STATUTORY DISPLAY FIELDS --}}
                             <div class="col-md-3">
                                 <label class="form-label fw-bold text-danger">SOCSO + EIS</label>
-                                <input type="number" id="socso_eis_display" class="form-control form-control-lg bg-light" readonly>
-
+                                <input type="number" id="socso_eis_display" value="0.00"  class="form-control form-control-lg bg-light fw-bold text-danger" readonly>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label fw-bold text-success">Net Salary (RM)</label>
-                                <input type="number" id="net_salary" name="net_salary" class="form-control form-control-lg bg-light fw-bold text-success" readonly>
+                                <input type="number" id="net_salary" name="net_salary" value="0.00" class="form-control form-control-lg bg-light fw-bold text-success" readonly>
                             </div>
                         </div>
 
                         <hr class="my-4">
 
-                        {{-- SECTION C: MANUAL ADJUSTMENTS WITH DYNAMIC REMARKS --}}
+                        {{-- SECTION C: ALLOWANCES --}}
                         <div class="card mb-3 border-success border-opacity-25">
                             <div class="card-header bg-success bg-opacity-10 py-2">
                                 <h6 class="mb-0 text-success small fw-bold text-uppercase">Allowances</h6>
@@ -81,8 +80,9 @@
                                 <div class="row">
                                     <div class="col-md-4">
                                         <label class="form-label small fw-bold">Amount (RM)</label>
+                                        {{-- Added calc-trigger class below --}}
                                         <input type="number" step="0.01" min="0" name="total_allowances" id="total_allowances"
-                                            class="form-control calc-trigger" {{-- Added calc-trigger here --}}
+                                            class="form-control calc-trigger" 
                                             value="{{ old('total_allowances', $payroll->allowances ?? 0) }}">
                                     </div>
                                     <div class="col-md-8">
@@ -97,6 +97,7 @@
                             </div>
                         </div>
 
+                        {{-- SECTION D: DEDUCTIONS --}}
                         <div class="card mb-4 border-danger border-opacity-25">
                             <div class="card-header bg-danger bg-opacity-10 py-2">
                                 <h6 class="mb-0 text-danger small fw-bold text-uppercase">Deductions</h6>
@@ -105,8 +106,9 @@
                                 <div class="row">
                                     <div class="col-md-4">
                                         <label class="form-label small fw-bold">Amount (RM)</label>
+                                        {{-- Added calc-trigger class below --}}
                                         <input type="number" step="0.01" min="0" name="total_deductions" id="total_deductions"
-                                            class="form-control calc-trigger" {{-- Added calc-trigger here --}}
+                                            class="form-control calc-trigger" 
                                             value="{{ old('total_deductions', $payroll->deduction ?? 0) }}">
                                     </div>
                                     <div class="col-md-8">
@@ -162,74 +164,47 @@
 
 @push('scripts')
 <script>
-    (function() {
-        'use strict';
+(function () {
+    'use strict';
 
-        // 1. Fetch dynamic rates passed from the controller
-        const ratesEl = document.getElementById('payroll-rates');
-        const STAFF_EPF_RATE = parseFloat(ratesEl.dataset.epf || 11) / 100;
-        const EIS_RATE = parseFloat(ratesEl.dataset.eis || 0.2) / 100;
+    const ratesEl = document.getElementById('payroll-rates');
+    if (!ratesEl) {
+        console.error('Payroll rates element not found');
+        return;
+    }
 
-        /**
-         * MAIN MATH ENGINE: Updates values instantly as you type
-         */
-        function calculateNet() {
-            const getVal = (id) => {
-                const el = document.getElementById(id);
-                return el ? (parseFloat(el.value) || 0) : 0;
-            };
+    const STAFF_EPF_RATE = parseFloat(ratesEl.dataset.epf || 0) / 100;
+    const EIS_RATE = parseFloat(ratesEl.dataset.eis || 0) / 100;
 
-            const basic = parseFloat(document.getElementById('basic_salary').value) || 0;
-            const allowances = parseFloat(document.getElementById('total_allowances').value) || 0;
-            const deductions = parseFloat(document.getElementById('total_deductions').value) || 0;
+    function calculateNet() {
+        const basic = parseFloat(document.getElementById('basic_salary').value) || 0;
+        const allowances = parseFloat(document.getElementById('total_allowances').value) || 0;
+        const deductions = parseFloat(document.getElementById('total_deductions').value) || 0;
 
-            // Statutory Calculations (EPF, SOCSO, EIS)
-            const epf = basic * STAFF_EPF_RATE;
-            const capped = Math.min(basic, 6000);
-            const socso = capped * 0.005;
-            const eis = capped * EIS_RATE;
+        const cappedSalary = Math.min(basic, 6000);
+        const epf = basic * STAFF_EPF_RATE;
+        const socso = cappedSalary * 0.005;
+        const eis = cappedSalary * EIS_RATE;
 
-            const statutoryTotal = epf + socso + eis;
+        const statutoryTotal = epf + socso + eis;
+        const net = (basic + allowances) - (deductions + statutoryTotal);
 
-            // Final Net Calculation
-            const net = (basic + allowances) - (deductions + statutoryTotal);
+        document.getElementById('epf_employee').value = epf.toFixed(2);
+        document.getElementById('socso_eis_display').value = (socso + eis).toFixed(2);
+        document.getElementById('net_salary').value = net.toFixed(2);
 
-            document.getElementById('epf_employee').value = epf.toFixed(2);
-            document.getElementById('socso_eis_display').value = (socso + eis).toFixed(2);
-            document.getElementById('net_salary').value = net.toFixed(2);
+        document.getElementById('save-btn').disabled = net < 0;
+    }
 
-            if (net < 0) {
-                document.getElementById('net_salary').classList.add('text-danger');
-                document.getElementById('save-btn').disabled = true;
-            }
+    // Attach listeners immediately
+    document.querySelectorAll('.calc-trigger').forEach(input => {
+        input.addEventListener('input', calculateNet);
+    });
 
-            const saveBtn = document.getElementById('save-btn');
-            if (saveBtn) saveBtn.disabled = net < 0;
-        }
+    // 🔥 THIS IS THE KEY LINE
+    calculateNet();
 
-        /**
-         * Attendance Sync Function
-         */
-        window.syncAttendance = function() {
-            const btn = document.getElementById('btn-sync-attendance');
-            const days = parseFloat(btn.getAttribute('data-days')) || 0;
-            const rate = parseFloat(btn.getAttribute('data-rate')) || 0;
-            const basicInput = document.getElementById('basic_salary');
-
-            if (basicInput) {
-                basicInput.value = (days * rate).toFixed(2);
-                calculateNet();
-            }
-        };
-
-        // 2. Initialize Listeners
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('.calc-trigger').forEach(input => {
-                input.addEventListener('input', calculateNet);
-            });
-
-            calculateNet();
-        });
-    })();
+})();
 </script>
+
 @endpush

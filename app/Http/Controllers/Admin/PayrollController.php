@@ -47,41 +47,39 @@ class PayrollController extends Controller
    public function batch_view($id)
     {
         $batch = DB::table('payroll_batches')->where('id', $id)->first();
-        
-        // Check if batch exists to avoid further errors
-        if (!$batch) {
-            return redirect()->route('admin.payroll.index')->with('error', 'Batch not found.');
-        }
+        if (!$batch) return redirect()->route('admin.payroll.index')->with('error', 'Batch not found.');
 
         $payrolls = Payroll::with('staff')->where('batch_id', $id)->get();
+        $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
 
-        // 1. CALL THE TOTALS HELPER HERE
-        $totals = $this->getBatchStatutoryTotals($id);
+        // Rates from Config
+        $staffEpfRate = ($configs['staff_epf_rate'] ?? 11.00) / 100;
+        $eisRate = ($configs['eis_rate'] ?? 0.20) / 100;
 
-        // Attach attendance count to each payroll object
         foreach ($payrolls as $payroll) {
-            $monthNum = date('m', strtotime($payroll->month));
-            $payroll->days_present = DB::table('attendances')
-                ->where('user_id', $payroll->staff->user_id)
-                ->whereYear('attendance_date', $payroll->year)
-                ->whereMonth('attendance_date', $monthNum)
-                ->where('status', 'Present')
-                ->count();
+            $basic = (float)$payroll->basic_salary;
+            $capped = min($basic, 6000);
+
+            // Individual Statutory Math
+            $payroll->calc_epf = $basic * $staffEpfRate;
+            $payroll->calc_socso = $this->calculateSocso($basic, 'employee');
+            $payroll->calc_eis = $capped * $eisRate;
+            
+            // Total Statutory for this row
+            $statutoryTotal = $payroll->calc_epf + $payroll->calc_socso + $payroll->calc_eis;
+
+            // Ensure Net Salary is recalculated if it's currently 0
+            if($payroll->net_salary <= 0) {
+                $payroll->net_salary = ($basic + $payroll->allowances) - ($payroll->deduction + $statutoryTotal);
+            }
         }
 
+        $totals = $this->getBatchStatutoryTotals($id);
         $rejectionReasons = DB::table('rejection_reasons')->get();
-        $varianceMsg = "Data loaded successfully";
+        $varianceMsg = "Data verified against current statutory rates.";
 
-        // 2. PASS $totals TO THE COMPACT FUNCTION
-        return view('admin.payroll.batch_view', compact(
-            'batch', 
-            'payrolls', 
-            'varianceMsg', 
-            'rejectionReasons', 
-            'totals'
-        ));
+        return view('admin.payroll.batch_view', compact('batch', 'payrolls', 'varianceMsg', 'rejectionReasons', 'totals'));
     }
-
     // ==========================================
     // 2. ACTION METHODS
     // ==========================================
@@ -106,7 +104,11 @@ class PayrollController extends Controller
             $count = 0;
 
             foreach ($activeStaff as $staff) {
-                $this->payrollService->generatePayroll($staff, $request->month, $request->year, ['batch_id' => $batchId]);
+                // 1. Generate the initial payroll record
+                $payroll = $this->payrollService->generatePayroll($staff, $request->month, $request->year, ['batch_id' => $batchId]);
+                
+                // 2. Perform the initial calculation automatically
+                $this->autoCalculateStatutory($payroll);
                 $count++;
             }
 
@@ -123,6 +125,46 @@ class PayrollController extends Controller
             Log::error("Batch Generation Failed: " . $e->getMessage());
             return back()->with('error', "Failed: " . $e->getMessage());
         }
+    }
+
+    private function autoCalculateStatutory($payroll)
+    {
+        $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
+        $basic = (float)$payroll->basic_salary;
+
+        // Fetch snapshot rates from your config table
+        $staffEpfRate = ($configs['staff_epf_rate'] ?? 11.00) / 100;
+        $employerRateLow = ($configs['employer_epf_rate_low'] ?? 13.00) / 100;
+        $employerRateHigh = ($configs['employer_epf_rate_high'] ?? 12.00) / 100;
+        $eisRate = ($configs['eis_rate'] ?? 0.20) / 100;
+
+        // Logic for Malaysia Statutory Requirements
+        $epfEmployee = $basic * $staffEpfRate;
+        $epfEmployer = ($basic <= 5000) ? ($basic * $employerRateLow) : ($basic * $employerRateHigh);
+        $eisVal = min($basic, 6000) * $eisRate;
+        $socsoEmployee = $this->calculateSocso($basic, 'employee');
+        $socsoEmployer = $this->calculateSocso($basic, 'employer');
+
+        $statutoryTotal = $epfEmployee + $socsoEmployee + $eisVal;
+        
+        // Initial Net Salary: (Basic + Allowances) - Statutory
+        $netSalary = ($basic + $payroll->allowances) - $statutoryTotal;
+
+        $breakdown = [
+            'calculated_amounts' => [
+                'epf_employee_rm' => $epfEmployee,
+                'epf_employer_rm' => $epfEmployer,
+                'socso_employee_rm' => $socsoEmployee,
+                'socso_employer_rm' => $socsoEmployer,
+                'eis_rm' => $eisVal
+            ]
+        ];
+
+        $payroll->update([
+            'net_salary' => $netSalary,
+            'breakdown'   => $breakdown,
+            'deduction'   => $statutoryTotal // Store statutory as initial deduction
+        ]);
     }
 
     // ==========================================
@@ -205,10 +247,10 @@ class PayrollController extends Controller
     {
         $payroll = Payroll::with(['staff.user'])->findOrFail($id);
 
-        // This pluck must match the keys in your SQL dump: 'staff_epf_rate', 'eis_rate', etc.
+        // Fetch rates exactly as they appear in your DB screenshot: 'staff_epf_rate', 'eis_rate'
         $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
 
-        // 3. Calculate attendance for the specific month
+        // Attendance calculation for the sync button
         $monthNumber = date('m', strtotime($payroll->month));
         $daysPresent = DB::table('attendances')
             ->where('user_id', $payroll->staff->user_id)
@@ -217,26 +259,12 @@ class PayrollController extends Controller
             ->where('status', 'Present')
             ->count();
 
-        // 4. Get active categories for the dynamic datalist dropdowns
-        $allowanceCategories = DB::table('payroll_categories')
-            ->where('type', 'Allowance')
-            ->orderBy('name')
-            ->get();
+        // Standard categories for dropdowns
+        $allowanceCategories = DB::table('payroll_categories')->where('type', 'Allowance')->get();
+        $deductionCategories = DB::table('payroll_categories')->where('type', 'Deduction')->get();
 
-        $deductionCategories = DB::table('payroll_categories')
-            ->where('type', 'Deduction')
-            ->orderBy('name')
-            ->get();
-
-        return view('admin.payroll.edit', compact(
-            'payroll',
-            'daysPresent',
-            'allowanceCategories',
-            'deductionCategories',
-            'configs'
-        ));
+        return view('admin.payroll.edit', compact('payroll', 'configs', 'daysPresent', 'allowanceCategories', 'deductionCategories'));
     }
-
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
@@ -308,7 +336,7 @@ class PayrollController extends Controller
                 'net_salary'       => $netSalary,
                 'allowance_remark' => $request->allowance_remark,
                 'deduction_remark' => $request->deduction_remark,
-                'breakdown'        => json_encode($breakdown), // Commit snapshot
+                'breakdown'        => $breakdown, // Commit snapshot
             ];
 
             if ($request->has('attendance_count_hidden')) {
@@ -341,11 +369,6 @@ class PayrollController extends Controller
         }
     }
 
-    private function calculateSocso($salary, $type)
-    {
-        $cappedSalary = min($salary, 6000);
-        return ($type === 'employee') ? ($cappedSalary * 0.005) : ($cappedSalary * 0.0175);
-    }
 
     public function reject(Request $request, $id)
     {
@@ -363,34 +386,56 @@ class PayrollController extends Controller
             ->with('success', 'Batch sent back to HR with notes.');
     }
 
-    private function getBatchStatutoryTotals($batchId)
-    {
-        $payrolls = Payroll::where('batch_id', $batchId)->get();
+private function getBatchStatutoryTotals($batchId)
+{
+    // 1. Get all payrolls and current configuration rates
+    $payrolls = Payroll::where('batch_id', $batchId)->get();
+    $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
+    
+    // 2. Extract rates from config (using your DB keys: staff_epf_rate, etc.)
+    $staffEpfRate = ($configs['staff_epf_rate'] ?? 25.00) / 100;
+    $employerRateLow = ($configs['employer_epf_rate_low'] ?? 15.00) / 100;
+    $employerRateHigh = ($configs['employer_epf_rate_high'] ?? 15.00) / 100;
+    $eisRate = ($configs['eis_rate'] ?? 0.30) / 100;
+
+    $totals = [
+        'epf_employee' => 0,
+        'epf_employer' => 0,
+        'socso_employee' => 0,
+        'socso_employer' => 0,
+        'eis_total' => 0,
+        'net_salary' => 0
+    ];
+
+    foreach ($payrolls as $payroll) {
+        $basic = (float)$payroll->basic_salary;
+
+        // 3. Perform the math directly from the table data
+        $epfEmployee = $basic * $staffEpfRate;
+        $epfEmployer = ($basic <= 5000) ? ($basic * $employerRateLow) : ($basic * $employerRateHigh);
+        $eisVal = min($basic, 6000) * $eisRate;
         
-        $totals = [
-            'epf_employee' => 0,
-            'epf_employer' => 0,
-            'socso_employee' => 0,
-            'socso_employer' => 0,
-            'eis_total' => 0,
-            'net_salary' => 0
-        ];
+        // Use your existing calculateSocso helper
+        $socsoEmployee = $this->calculateSocso($basic, 'employee');
+        $socsoEmployer = $this->calculateSocso($basic, 'employer');
 
-        foreach ($payrolls as $payroll) {
-            // Pull from the JSON Snapshot created during the 'update' or 'generate' process
-            $data = json_decode($payroll->breakdown, true); 
-            
-            $totals['epf_employee']   += $data['calculated_amounts']['epf_employee_rm'] ?? 0;
-            $totals['epf_employer']   += $data['calculated_amounts']['epf_employer_rm'] ?? 0;
-            $totals['socso_employee'] += $data['calculated_amounts']['socso_employee_rm'] ?? 0;
-            $totals['socso_employer'] += $data['calculated_amounts']['socso_employer_rm'] ?? 0;
-            // EIS is usually 0.2% from both parties in Malaysia
-            $totals['eis_total']      += ($data['calculated_amounts']['eis_rm'] ?? 0) * 2; 
-            $totals['net_salary']     += $payroll->net_salary;
-        }
-
-        return $totals;
+        // 4. Accumulate Totals
+        $totals['epf_employee']   += $epfEmployee;
+        $totals['epf_employer']   += $epfEmployer;
+        $totals['socso_employee'] += $socsoEmployee;
+        $totals['socso_employer'] += $socsoEmployer;
+        $totals['eis_total']      += ($eisVal * 2); // Both employee & employer
+        $totals['net_salary']     += $payroll->net_salary;
     }
+
+    return $totals;
+}
+
+private function calculateSocso($salary, $type)
+{
+    $cappedSalary = min($salary, 6000);
+    return ($type === 'employee') ? ($cappedSalary * 0.005) : ($cappedSalary * 0.0175);
+}
 
 
     /**
