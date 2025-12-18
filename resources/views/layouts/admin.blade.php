@@ -194,6 +194,20 @@
           </li>
         </ul>
 
+        <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ml-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                  System Config
+        </div>
+
+        <ul class="nav flex-column ms-0 p-0" style="list-style: none;">
+            <li class="nav-item">
+                <a href="{{ route('admin.settings.index') }}" 
+                  class="nav-link d-flex align-items-center {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"
+                  style="margin-left: -2%;"> <i class="bi bi-gear me-2" style="width: 25px; text-align: center;"></i>
+                    <span class="label">Settings</span>
+                </a>
+            </li>
+        </ul>
+
       </aside>
 
       <main class="col-md-9 col-lg-10 p-4">

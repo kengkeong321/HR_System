@@ -13,12 +13,13 @@ class Attendance extends Model
 
     // Allow these fields to be filled (Data Protection [138])
     protected $fillable = [
-        'user_id',
-        'status',
-        'attendance_date',
-        'clock_in_time',
-        'remarks'
-    ];
+    'user_id',
+    'status',
+    'attendance_date',
+    'clock_in_time',
+    'clock_out_time', 
+    'remarks'
+]   ;
 
     /**
      * Define the relationship to the User.
