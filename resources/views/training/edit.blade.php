@@ -27,12 +27,14 @@
                         <label>Venue / Location</label>
                         <input type="text" name="venue" class="form-control" value="{{ $training->venue }}" required>
                     </div>
-                    <div class="form-group col-md-4">
-                        <label>Max Participants (Capacity)</label>
-                        <input type="number" name="capacity" class="form-control" 
-                               value="{{ $training->max_participants }}" min="1" placeholder="e.g. 50">
-                        <small class="form-text text-muted">Limit the number of staff allowed.</small>
-                    </div>
+                   <div class="form-group col-md-4">
+    <label>Max Participants (Capacity)</label>
+    <input type="number" name="capacity" class="form-control @error('capacity') is-invalid @enderror" 
+           value="{{ old('capacity', $training->capacity) }}" 
+           min="1" required placeholder="e.g. 50">
+    <small class="form-text text-muted">Limit the number of staff allowed.</small>
+    @error('capacity') <div class="invalid-feedback">{{ $message }}</div> @enderror
+</div>
                 </div>
                 <div class="form-row">
                     <div class="form-group col-md-6">

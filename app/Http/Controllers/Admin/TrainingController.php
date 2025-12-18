@@ -18,15 +18,12 @@ class TrainingController extends Controller
         $userId = session('user_id');
         if (!$userId) return false;
         
-        // 確保 User Model 設定正確 (protected $table = 'user')
+      
         $user = User::where('user_id', $userId)->first();
         
         return $user && $user->role === 'Admin';
     }
 
-    /**
-     * Function: View Staff Training Records / Manage Training Programs
-     */
     public function index()
     {
         $trainings = TrainingProgram::all();
@@ -49,17 +46,16 @@ class TrainingController extends Controller
         abort(403, 'Unauthorized.');
     }
 
-    // 將所有名稱統一為 'capacity'
     $validated = $request->validate([
         'title'       => 'required|string|max:255',
         'venue'       => 'required|string|max:255',
-        'capacity'    => 'required|integer|min:1', // 改回 capacity
+        'capacity'    => 'required|integer|min:1', 
         'start_time'  => 'required|date',
         'end_time'    => 'required|date|after:start_time',
         'description' => 'nullable|string|max:1000',
     ]);
 
-    // 因為 $validated 現在包含 'capacity'，資料庫就能正確寫入
+    
     TrainingProgram::create($validated);
 
     return redirect()->route('training.index')->with('success', 'Training Program Created Successfully!');
@@ -75,26 +71,22 @@ class TrainingController extends Controller
         return view('training.show', compact('training', 'staffList', 'isAdmin'));
     }
 
-    /**
-     * 關鍵修正：指派員工
-     */
     public function assign(Request $request, $id)
     {
-        // 1. 驗證：確保檢查的是 'user' 表 (單數)
+    
         $request->validate([
             'user_id' => 'required|exists:user,user_id', 
         ]);
 
         $training = TrainingProgram::findOrFail($id);
 
-        // 2. 檢查重複指派：使用 'user.user_id' 避免 SQL 錯誤
+        
         if ($training->participants()->where('user.user_id', $request->user_id)->exists()) {
             return redirect()->back()->with('error', 'This staff member is already assigned.');
         }
 
-        // 3. 檢查人數上限：邏輯修正為 >= (大於等於)
-    // 檢查人數上限邏輯
-if (!is_null($training->capacity)) { // 這裡也要改用 capacity
+   
+if (!is_null($training->capacity)) { 
     $currentCount = $training->participants()->count();
     
     if ($currentCount >= $training->capacity) {
@@ -102,7 +94,7 @@ if (!is_null($training->capacity)) { // 這裡也要改用 capacity
     }
 }
 
-        // 4. 執行指派
+  
         $training->participants()->attach($request->user_id, ['status' => 'Assigned']);
 
         return redirect()->back()->with('success', 'Staff assigned successfully.');
@@ -170,15 +162,13 @@ if (!is_null($training->capacity)) { // 這裡也要改用 capacity
         return view('training.edit', compact('training'));
     }
 
-    /**
-     * 關鍵修正：更新培訓資料
-     */
+
 public function update(Request $request, $id)
 {
     $request->validate([
         'title'      => 'required|string|max:255',
         'venue'      => 'required|string|max:255',
-        'capacity'   => 'nullable|integer|min:1', // 這裡用 capacity
+        'capacity'   => 'required|integer|min:1', 
         'start_time' => 'required|date',
         'end_time'   => 'required|date|after:start_time', 
     ]);
@@ -188,7 +178,7 @@ public function update(Request $request, $id)
     $training->update([
         'title'      => $request->title,
         'venue'      => $request->venue,
-        'capacity'   => $request->capacity, // 這裡確保與資料庫欄位一致
+        'capacity'   => $request->capacity, 
         'start_time' => $request->start_time,
         'end_time'   => $request->end_time,
         'description'=> $request->description,
@@ -210,13 +200,13 @@ public function update(Request $request, $id)
 
     public function detachParticipant($id, $userId)
     {
-        // 1. 找到該培訓活動
+       
         $training = TrainingProgram::findOrFail($id);
         
-        // 2. 解除關聯 (Detach) 該員工
+       
         $training->participants()->detach($userId);
 
-        // 3. 返回上一頁並顯示訊息
+     
         return redirect()->back()->with('success', 'Staff removed successfully.');
     }
 }
