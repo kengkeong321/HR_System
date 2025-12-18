@@ -102,6 +102,10 @@
               <a class="nav-link d-flex align-items-center" href="{{ route('admin.courses.index') }}"><i class="bi bi-journal-bookmark me-2"></i><span class="label">Courses</span></a>
             </li>
             <li class="nav-item">
+              <a class="nav-link d-flex align-items-center" href="{{ route('training.index') }}"> <i class="bi bi-easel me-2"></i> <span class="label">Training</span>
+    </a>
+</li>
+            <li class="nav-item">
               <a class="nav-link d-flex align-items-center" href="{{ route('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i><span class="label">Dashboard</span></a>
             </li>
           </ul>
