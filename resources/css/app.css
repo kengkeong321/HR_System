@@ -9,3 +9,17 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* --- Sidebar Custom Fixes --- */
+.sidebar ul, 
+.sidebar li,
+.sidebar .nav-item {
+    list-style: none !important;
+    list-style-type: none !important;
+    display: block !important; 
+    margin-left: 0 !important;
+}
+
+.sidebar .nav {
+    padding-left: 0 !important;
+}
