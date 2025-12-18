@@ -38,6 +38,13 @@
               <li class="nav-item">
                 <span class="nav-link">{{ session('user_name') }}</span>
               </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="{{ route('my.payslips') }}">
+                   My Payslips
+                </a>
+              </li>
+              
               <li class="nav-item">
                 <form method="POST" action="{{ route('logout') }}">
                   @csrf

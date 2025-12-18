@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 // Fix for the 'Auth' error:
 use Illuminate\Support\Facades\Auth;
 use App\Models\Attendance;
+use Illuminate\Support\Facades\DB;
 
 class AttendanceController extends Controller
 {
@@ -38,31 +39,176 @@ class AttendanceController extends Controller
         return view('admin.attendance', compact('users', 'search'));
     }
 
-    public function store(Request $request)
+  public function store(Request $request)
     {
         $validated = $request->validate([
-            // Validation [11]: Ensure the user exists AND has the Staff role
             'user_id' => 'required|exists:user,user_id',
             'status' => 'required|string|in:Present,Absent,Late',
             'remarks' => 'nullable|string|max:255',
+            'action_type' => 'required|in:in,out'
         ]);
 
-        // Extra Security Check [89]
-        $targetUser = \App\Models\User::find($validated['user_id']);
-        if ($targetUser->role !== 'Staff') {
-            return redirect()->back()->withErrors(['error' => 'You can only mark attendance for staff members.']);
+        $today = now()->toDateString();
+
+        // Check if a record already exists for this user today
+        $existingRecord = \App\Models\Attendance::where('user_id', $validated['user_id'])
+            ->where('attendance_date', $today)
+            ->first();
+
+        // LOGIC FOR CLOCK IN
+        if ($request->action_type == 'in') {
+            if ($existingRecord) {
+                // Error Notification: Already Clocked In
+                return redirect()->back()
+                    ->with('error', 'You have already clocked in today!')
+                    ->withInput();
+            }
+
+            $attendance = new \App\Models\Attendance();
+            $attendance->user_id = $validated['user_id'];
+            $attendance->status = $validated['status'];
+            $attendance->attendance_date = $today;
+            $attendance->clock_in_time = now()->toTimeString();
+            $attendance->remarks = $request->remarks;
+            $attendance->save();
+
+            return redirect()->back()->with('success', 'Attendance marked successfully!');
         }
 
-        $attendance = new \App\Models\Attendance();
-        $attendance->user_id = $validated['user_id'];
-        $attendance->status = $validated['status'];
-        $attendance->attendance_date = now()->toDateString();
-        $attendance->clock_in_time = now()->toTimeString();
-        $attendance->remarks = $request->remarks;
-        $attendance->save();
+        // LOGIC FOR CLOCK OUT
+        if ($request->action_type == 'out') {
+            if (!$existingRecord) {
+                return redirect()->back()
+                    ->with('error', 'No clock-in record found for today. Please clock in first!')
+                    ->withInput();
+            }
 
-        Log::info("Observer Notification: Admin marked attendance for Staff: " . $targetUser->user_name);
+            if ($existingRecord->clock_out_time) {
+                // Error Notification: Already Clocked Out
+                return redirect()->back()
+                    ->with('error', 'You have already clocked out today!')
+                    ->withInput();
+            }
 
-        return redirect()->back()->with('success', 'Attendance for ' . $targetUser->user_name . ' marked successfully!');
+            $existingRecord->update([
+                'clock_out_time' => now()->toTimeString(),
+                'remarks' => $existingRecord->remarks . " | " . ($request->remarks ?? 'Clocked out')
+            ]);
+
+            return redirect()->back()->with('success', 'Clocked out successfully!');
+        }
+    }
+
+    public function edit($id)
+    {
+        $attendance = Attendance::findOrFail($id);
+        return view('admin.attendance.edit', compact('attendance'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        // Input Validation [11]
+        $validated = $request->validate([
+            'status' => 'required|string|in:Present,Absent,Late',
+            'remarks' => 'nullable|string|max:255',
+            'attendance_date' => 'required|date',
+        ]);
+
+        $attendance = Attendance::findOrFail($id);
+        $attendance->update($validated);
+
+        // Observer Pattern: Log the manual correction by Admin
+        Log::info("Observer Notification: Admin edited Attendance ID " . $id . " for User " . $attendance->user_id);
+
+        return redirect()->route('admin.attendance.index')->with('success', 'Record updated successfully!');
+    }
+
+    public function staffCreate()
+    {
+        $userId = session('user_id');
+        $today = now()->toDateString();
+
+        // Fetch today's record to control the buttons
+        $attendance = \App\Models\Attendance::where('user_id', $userId)
+            ->where('attendance_date', $today)
+            ->first();
+
+        // Fetch the last 5 records for the history table
+        $history = \App\Models\Attendance::where('user_id', $userId)
+            ->orderBy('attendance_date', 'desc')
+            ->take(5)
+            ->get();
+
+        return view('staff.attendance', compact('attendance', 'history'));
+    }
+
+    public function staffStore(Request $request)
+    {
+        $userId = session('user_id');
+        $today = now()->toDateString();
+        $currentTime = now()->toTimeString(); // Captures current time, e.g., "09:15:00"
+        $action = $request->input('action_type');
+
+        // 1. Find if a record exists for today to prevent duplicates
+        $record = \App\Models\Attendance::where('user_id', $userId)
+            ->where('attendance_date', $today)
+            ->first();
+
+        if ($action == 'in') {
+            if ($record) {
+                return back()->with('error', 'You have already clocked in today!');
+            }
+
+            // 2. Fetch the Standard Work Start Time from your settings table
+            $startTimeSetting = DB::table('settings')
+                ->where('key_name', 'work_start_time')
+                ->value('key_value');
+
+            // Fallback default if setting is missing to prevent errors
+            if (!$startTimeSetting) {
+                $startTimeSetting = '09:00:00';
+            }
+
+            // 3. Automated Logic: Compare current time to start time
+            // If currentTime is LATER than startTimeSetting, status becomes 'Late'
+            $status = (strtotime($currentTime) > strtotime($startTimeSetting)) ? 'Late' : 'Present';
+
+            \App\Models\Attendance::create([
+                'user_id' => $userId,
+                'attendance_date' => $today,
+                'clock_in_time' => $currentTime,
+                'status' => $status, // Dynamic status based on logic
+                'remarks' => ($status === 'Late') ? 'Auto-marked: Late arrival' : null
+            ]);
+
+            $message = ($status === 'Late') 
+                ? 'Clock-in recorded. You are marked as Late.' 
+                : 'Clock-in successful! Have a great day.';
+
+            if ($status === 'Late') {
+                // Send a warning instead of success for late users
+                return back()->with('warning', 'Clock-in recorded. You are marked as Late!');
+            }
+
+            return back()->with('success', $message);
+            
+        }
+
+        if ($action == 'out') {
+            if (!$record) {
+                return back()->with('error', 'No clock-in record found. Please clock in first!');
+            }
+            
+            if ($record->clock_out_time) {
+                return back()->with('error', 'You have already clocked out today!');
+            }
+
+            $record->update([
+                'clock_out_time' => $currentTime
+            ]);
+
+            return back()->with('success', 'Clock-out successful! See you tomorrow.');
+        }
+        
     }
 }

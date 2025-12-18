@@ -5,6 +5,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Controllers\Admin\AttendanceController;
+use App\Http\Controllers\Admin\PayrollController; 
+use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\LeaveController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,21 +25,32 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------
-| Attendance Module (Bypass strict Admin Check to stop Redirects)
+| Authenticated Staff & System Routes
 |--------------------------------------------------------------------------
-| These routes still require login (Access Control [89]), but they won't 
-| kick you out if the system doesn't recognize your "Admin" role yet.
+| Routes that require login but are accessible to both Admin and Staff.
 */
 
 Route::middleware(['auth'])->group(function () {
-    // Staff/Admin Mark Attendance
+    
+    // --- Attendance Module ---
     Route::get('/admin/attendance', [AttendanceController::class, 'create'])->name('admin.attendance.create');
-    
-    // Save Data (Secure POST - Data Protection [138])
     Route::post('/admin/attendance/store', [AttendanceController::class, 'store'])->name('admin.attendance.store');
-    
-    // Admin Logs (Observer View)
     Route::get('/admin/attendance/logs', [AttendanceController::class, 'index'])->name('admin.attendance.index');
+    Route::get('/admin/attendance/{id}/edit', [AttendanceController::class, 'edit'])->name('admin.attendance.edit');
+    Route::patch('/admin/attendance/{id}/update', [AttendanceController::class, 'update'])->name('admin.attendance.update');
+    Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
+    Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
+    Route::get('/admin/leave', [LeaveController::class, 'adminIndex'])->name('leave.index');
+    
+    // Use PATCH for state updates to comply with Data Protection [138]
+    Route::patch('/admin/leave/{id}/update', [LeaveController::class, 'adminUpdate'])->name('leave.update');
+
+    // --- Staff Payslip View ---
+    // Moved here so non-admin staff can access their own history
+    Route::get('/my-payslips', [PayrollController::class, 'myPayslips'])->name('my.payslips');
+    
+    // Individual PDF Download (Reuse Admin Controller Export)
+    Route::get('/payroll/export-slip/{id}', [PayrollController::class, 'exportSlip'])->name('admin.payroll.export_slip');
 });
 
 /*
@@ -50,7 +64,7 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
 
-    // User management (Admin only)
+    // --- User Management (Admin only) ---
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class)
         ->except(['show','destroy'])
         ->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
@@ -59,7 +73,29 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
         ->name('users.toggleStatus')
         ->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
 
-    // Faculty, Department, Course CRUD
+    /*
+    |--------------------------------------------------------------------------
+    | Payroll Management (Admin Only)
+    |--------------------------------------------------------------------------
+    */
+    // 1. Generate Batch
+    Route::post('payroll/generate', [PayrollController::class, 'generateBatch'])->name('payroll.generateBatch');
+    
+    // 2. View Batch (The 'batch_view' route used in your dashboard)
+    Route::get('payroll/batch/{id}', [PayrollController::class, 'show'])->name('payroll.batch_view');
+
+    // 3. Approvals
+    Route::post('payroll/batch/{id}/approve-l1', [PayrollController::class, 'approveL1'])->name('payroll.approve_l1');
+    Route::post('payroll/batch/{id}/approve-l2', [PayrollController::class, 'approveL2'])->name('payroll.approve_l2');
+
+    // 4. Batch Export (Full Report)
+    Route::get('payroll/batch/{id}/export', [PayrollController::class, 'exportReport'])->name('payroll.export');
+
+    // 5. Payroll Resource (Handles Index, Edit, Update)
+    Route::resource('payroll', PayrollController::class)->except(['show', 'create', 'store']);
+
+
+    // --- Faculty, Department, Course CRUD ---
     Route::resource('faculties', \App\Http\Controllers\Admin\FacultyController::class)->except(['show','destroy']);
     Route::patch('faculties/{faculty}/status', [\App\Http\Controllers\Admin\FacultyController::class, 'toggleStatus'])->name('faculties.toggleStatus');
 
@@ -76,6 +112,24 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
 });
 
+
+// Staff specific routes
+Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
+    // The screen you just created
+    Route::get('/dashboard', function () {
+        return view('staff.dashboard');
+    })->name('dashboard');
+
+    // The staff attendance marking screen
+    Route::get('/attendance', [AttendanceController::class, 'staffCreate'])->name('attendance.create');
+    Route::post('/attendance/store', [AttendanceController::class, 'staffStore'])->name('attendance.store');
+    // Page to view and apply for leave
+    Route::get('/leave', [LeaveController::class, 'staffIndex'])->name('leave.index');
+    
+    // Action to save the leave request
+    Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
+});
+
 /*
 |--------------------------------------------------------------------------
 | System Utilities
@@ -85,4 +139,36 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
 Route::post('/_sidebar/toggle', function (\Illuminate\Http\Request $request) {
     session(['sidebar_collapsed' => (bool) $request->input('collapsed')]);
     return response()->json(['ok' => true]);
+});
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| training
+|--------------------------------------------------------------------------
+*/
+
+
+use App\Http\Controllers\Admin\TrainingController;
+
+Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(function () {
+    
+    
+    Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
+    Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
+    Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
+    Route::get('/training/create/new', [TrainingController::class, 'create'])->name('training.create');
+    Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
+    Route::delete('/training/{id}', [TrainingController::class, 'destroy'])->name('training.destroy');
+    Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
+    Route::post('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assign'])->name('training.assign');
+    Route::get('/training/{id}/edit', [TrainingController::class, 'edit'])->name('training.edit');
+    Route::put('/training/{id}', [TrainingController::class, 'update'])->name('training.update');
+    Route::match(['get', 'post'], '/training/records', [App\Http\Controllers\Admin\TrainingController::class, 'records'])->name('training.records');
+    Route::post('/training/{id}/user/{userId}/status', [TrainingController::class, 'updateStatus'])->name('training.status');
+    Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
+    Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])
+     ->name('training.updateStatus');
 });
