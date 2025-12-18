@@ -22,9 +22,11 @@ class EnsureUserIsAdmin
 
         $user = User::find($userId);
 
+        $allowedRoles = ['Admin', 'Staff', 'HR', 'Finance'];
+
         // Allow both Admin and Staff to access admin pages. Specific admin-only
         // checks (for example user management) should use a stricter middleware.
-        if (! $user || ! in_array($user->role, ['Admin', 'Staff'])) {
+        if (! $user || ! in_array($user->role, ['Admin', 'Staff', 'HR', 'Finance'])) {
             return redirect()->route('login')->withErrors(['access' => 'Admin or Staff access required']);
         }
 
