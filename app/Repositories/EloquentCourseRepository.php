@@ -11,7 +11,12 @@ class EloquentCourseRepository implements CourseRepositoryInterface
         return Course::all();
     }
 
-    public function paginate(int $perPage = 15, ?int $page = null)
+    public function activeOrderedByName()
+    {
+        return Course::where('status', 'Active')->orderBy('course_name')->get();
+    }
+
+    public function paginate(int $perPage = 10, ?int $page = null)
     {
         return Course::paginate($perPage, ['*'], 'page', $page);
     }

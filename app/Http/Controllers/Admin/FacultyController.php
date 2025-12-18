@@ -84,6 +84,20 @@ class FacultyController extends Controller
         }
     }
 
+    // Return active departments for a faculty (AJAX for modal)
+    public function departments(string $faculty)
+    {
+        $f = $this->facRepo->getWithDepartments($faculty);
+        $departments = $f->departments->map(function($d) {
+            return ['depart_id' => $d->depart_id, 'depart_name' => $d->depart_name];
+        })->values();
+
+        return response()->json([
+            'faculty' => ['faculty_id' => $f->faculty_id, 'faculty_name' => $f->faculty_name],
+            'departments' => $departments,
+        ]);
+    }
+
     public function page(Request $request)
     {
         $page = (int) $request->input('page', 1);

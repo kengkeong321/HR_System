@@ -11,7 +11,7 @@ class EloquentFacultyRepository implements FacultyRepositoryInterface
         return Faculty::all();
     }
 
-    public function paginate(int $perPage = 15, ?int $page = null)
+    public function paginate(int $perPage = 10, ?int $page = null)
     {
         return Faculty::paginate($perPage, ['*'], 'page', $page);
     }
@@ -39,5 +39,11 @@ class EloquentFacultyRepository implements FacultyRepositoryInterface
         $f->status = $f->status === 'Active' ? 'Inactive' : 'Active';
         $f->save();
         return $f;
+    }
+
+    public function getWithDepartments(string $id)
+    {
+        // Include only active departments, ordered by name
+        return Faculty::with(['departments' => function($q) { $q->where('status','Active')->orderBy('depart_name'); }])->findOrFail($id);
     }
 }

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsStaffOnly;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PayrollSettingController;
@@ -116,7 +117,7 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
 
 
 // Staff specific routes
-Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
+Route::prefix('staff')->name('staff.')->middleware([\App\Http\Middleware\EnsureUserIsStaffOnly::class])->group(function () {
     
     Route::get('/dashboard', function () {
         return view('staff.dashboard');
@@ -140,7 +141,7 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
 
 /*
 |--------------------------------------------------------------------------
-| System Utilities
+| System Utilities 
 |--------------------------------------------------------------------------
 */
 

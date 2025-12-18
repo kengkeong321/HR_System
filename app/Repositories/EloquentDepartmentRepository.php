@@ -11,7 +11,7 @@ class EloquentDepartmentRepository implements DepartmentRepositoryInterface
         return Department::with('faculty')->get();
     }
 
-    public function paginate(int $perPage = 15, ?int $page = null)
+    public function paginate(int $perPage = 10, ?int $page = null)
     {
         return Department::with('faculty')->paginate($perPage, ['*'], 'page', $page);
     }
@@ -39,5 +39,10 @@ class EloquentDepartmentRepository implements DepartmentRepositoryInterface
         $d->status = $d->status === 'Active' ? 'Inactive' : 'Active';
         $d->save();
         return $d;
+    }
+
+    public function getWithCourses(string $id)
+    {
+        return Department::with(['faculty', 'courses' => function($q) { $q->orderBy('course_name'); }])->findOrFail($id);
     }
 }

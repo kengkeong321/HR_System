@@ -6,7 +6,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 
-class EnsureUserIsAdmin
+class EnsureUserIsStaffOnly
 {
     public function handle(Request $request, Closure $next)
     {
@@ -20,16 +20,23 @@ class EnsureUserIsAdmin
 
             return redirect()->route('login')->withErrors(['auth' => 'Please login first.']);
         }
-
-        //handle not admin
+    
+        //handle not staff
         $user = User::find($userId);
+        
+        if ($user->role !== 'Staff') {
+            if ($user->role === 'Admin') {
+                $request->session()->flush();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                return redirect()->route('login')->withErrors(['access' => 'Staff access required']);
+            }
 
-        if (! $user || ! in_array($user->role, ['Admin'])) {
             $request->session()->flush();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login')->withErrors(['access' => 'Admin access required']);
+            return redirect()->route('login')->withErrors(['access' => 'Staff access required']);
         }
 
         return $next($request);

@@ -5,11 +5,36 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Repositories\DepartmentRepositoryInterface;
 use App\Repositories\FacultyRepositoryInterface;
+use App\Repositories\CourseRepositoryInterface;
 use Illuminate\Http\Request;
 
 class DepartmentController extends Controller
 {
-    public function __construct(private DepartmentRepositoryInterface $depRepo, private FacultyRepositoryInterface $facRepo) {}
+    public function __construct(private DepartmentRepositoryInterface $depRepo, private FacultyRepositoryInterface $facRepo, private CourseRepositoryInterface $courseRepo) {}
+
+    public function assign(string $department)
+    {
+        $department = $this->depRepo->find($department);
+        $courses = $this->courseRepo->activeOrderedByName();
+        $selected = $department->courses->pluck('course_id')->toArray();
+        return view('admin.departments.assign', compact('department','courses','selected'));
+    }
+
+    public function assignStore(Request $request, string $department)
+    {
+        $data = $request->validate([
+            'courses' => 'nullable|array',
+            'courses.*' => 'string|exists:Course,course_id',
+        ]);
+
+        try {
+            $d = $this->depRepo->find($department);
+            $d->courses()->sync($data['courses'] ?? []);
+            return redirect()->route('admin.departments.index')->with('success','Assigned courses updated');
+        } catch (\Throwable $e) {
+            return redirect()->route('admin.departments.assign', $department)->with('error', $e->getMessage());
+        }
+    }
 
     public function index(Request $request)
     {
@@ -85,6 +110,20 @@ class DepartmentController extends Controller
         } catch (\Throwable $e) {
             return redirect()->route('admin.departments.index')->with('error', $e->getMessage());
         }
+    }
+
+    // Return assigned courses for department (AJAX used by modal)
+    public function assignments(string $department)
+    {
+        $d = $this->depRepo->getWithCourses($department);
+        $courses = $d->courses->map(function($c) {
+            return ['course_id' => $c->course_id, 'course_name' => $c->course_name];
+        })->values();
+
+        return response()->json([
+            'department' => ['depart_id' => $d->depart_id, 'depart_name' => $d->depart_name],
+            'courses' => $courses,
+        ]);
     }
 
     public function page(Request $request)
