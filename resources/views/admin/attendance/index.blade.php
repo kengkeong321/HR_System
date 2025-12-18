@@ -14,7 +14,9 @@
                         <th>Staff Name</th>
                         <th>Status</th>
                         <th>Clock In</th>
+                        <th>Clock Out</th>
                         <th>Remarks</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -28,7 +30,13 @@
                             </span>
                         </td>
                         <td>{{ date('h:i A', strtotime($record->clock_in_time)) }}</td>
+                        <td>{{ $record->clock_out_time ? date('h:i A', strtotime($record->clock_out_time)) : '-' }}</td>
                         <td>{{ $record->remarks }}</td>
+                        <td>
+                            <a href="{{ route('admin.attendance.edit', $record->id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-edit mr-1"></i> Edit
+                            </a>
+                        </td>
                     </tr>
                     @endforeach
                 </tbody>

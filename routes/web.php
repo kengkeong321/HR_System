@@ -6,6 +6,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\PayrollController; 
+use App\Http\Controllers\Admin\SettingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +35,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/attendance', [AttendanceController::class, 'create'])->name('admin.attendance.create');
     Route::post('/admin/attendance/store', [AttendanceController::class, 'store'])->name('admin.attendance.store');
     Route::get('/admin/attendance/logs', [AttendanceController::class, 'index'])->name('admin.attendance.index');
+    Route::get('/admin/attendance/{id}/edit', [AttendanceController::class, 'edit'])->name('admin.attendance.edit');
+    Route::patch('/admin/attendance/{id}/update', [AttendanceController::class, 'update'])->name('admin.attendance.update');
+    Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
+    Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
 
     // --- Staff Payslip View ---
     // Moved here so non-admin staff can access their own history
@@ -100,6 +105,19 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::post('departments/page', [\App\Http\Controllers\Admin\DepartmentController::class, 'page'])->name('departments.page');
     Route::post('courses/page', [\App\Http\Controllers\Admin\CourseController::class, 'page'])->name('courses.page');
     Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+});
+
+
+// Staff specific routes
+Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
+    // The screen you just created
+    Route::get('/dashboard', function () {
+        return view('staff.dashboard');
+    })->name('dashboard');
+
+    // The staff attendance marking screen
+    Route::get('/attendance', [AttendanceController::class, 'staffCreate'])->name('attendance.create');
+    Route::post('/attendance/store', [AttendanceController::class, 'staffStore'])->name('attendance.store');
 });
 
 /*

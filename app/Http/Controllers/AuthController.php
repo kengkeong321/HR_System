@@ -29,14 +29,16 @@ class AuthController extends Controller
             return back()->withErrors(['credentials' => 'Invalid username or password'])->withInput();
         }
 
-        // 2. THE CRITICAL FIX: Log the user into Laravel's Auth system
         Auth::login($user);
 
-        // 3. Keep your manual session for the sidebar/UI if needed
+        // Store session data for UI consistency
         session(["user_id" => $user->user_id, "user_name" => $user->user_name, "role" => $user->role]);
 
-        if (in_array($user->role, ['Admin', 'Staff'])) {
+        // Redirection Logic [89]
+        if ($user->role === 'Admin') {
             return redirect()->route('admin.dashboard');
+        } elseif ($user->role === 'Staff') {
+            return redirect()->route('staff.dashboard');
         }
 
         return redirect()->route('login')->withErrors(['access' => 'You do not have access']);
