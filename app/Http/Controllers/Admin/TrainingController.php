@@ -35,6 +35,11 @@ class TrainingController extends Controller
     return view('admin.training.index', compact('trainings', 'isAdmin'));
 }
 
+
+
+
+//==========================================================================================================================
+
     public function create()
     {
         if (!$this->isAdmin()) {
@@ -64,44 +69,66 @@ class TrainingController extends Controller
     return redirect()->route('training.index')->with('success', 'Training Program Created Successfully!');
 }
 
-    public function show($id)
-    {
-        $training = TrainingProgram::with(['participants', 'feedbacks.user'])->findOrFail($id);
-        
-        $staffList = User::where('role', 'Staff')->get();
-        $isAdmin = $this->isAdmin(); 
 
-        return view('admin.training.show', compact('training', 'staffList', 'isAdmin'));
-    }
+//==========================================================================================================================
 
-    public function assign(Request $request, $id)
-    {
+
+
+
+public function show($id)
+{
     
-        $request->validate([
-            'user_id' => 'required|exists:user,user_id', 
-        ]);
-
-        $training = TrainingProgram::findOrFail($id);
-
-        
-        if ($training->participants()->where('user.user_id', $request->user_id)->exists()) {
-            return redirect()->back()->with('error', 'This staff member is already assigned.');
-        }
-
-   
-if (!is_null($training->capacity)) { 
-    $currentCount = $training->participants()->count();
+    $training = TrainingProgram::with(['participants', 'feedbacks.user'])
+        ->withCount('participants')
+        ->findOrFail($id);
     
-    if ($currentCount >= $training->capacity) {
-        return redirect()->back()->with('error', 'Training is full!');
-    }
+    $staffList = User::where('role', 'Staff')->get();
+    $isAdmin = $this->isAdmin(); 
+
+    return view('admin.training.show', compact('training', 'staffList', 'isAdmin'));
 }
 
-  
-        $training->participants()->attach($request->user_id, ['status' => 'Assigned']);
 
-        return redirect()->back()->with('success', 'Staff assigned successfully.');
+
+//==========================================================================================================================
+
+
+public function assign(Request $request, $id)
+{
+   
+    $request->validate([
+        'user_id' => 'required',
+    ]);
+
+    $training = TrainingProgram::findOrFail($id);
+    $userId = $request->user_id;
+
+    $isAlreadyAssigned = $training->participants()->where('user.user_id', $userId)->exists();
+
+    if ($isAlreadyAssigned) {
+        return redirect()->back()->with('error', 'This staff is already on the training list.');
     }
+
+   
+    if (!is_null($training->capacity)) {
+        $currentCount = $training->participants()->count();
+        if ($currentCount >= $training->capacity) {
+            return redirect()->back()->with('error', 'Assignment failed: Training slots are full!');
+        }
+    }
+
+
+    $training->participants()->attach($userId, ['status' => 'Assigned']);
+
+    
+    return redirect()->route('training.show', $id)->with('success', 'Staff assigned successfully！');
+}
+
+
+
+//==========================================================================================================================
+
+
 
     public function assignPage($id)
     {
@@ -111,24 +138,39 @@ if (!is_null($training->capacity)) {
         return view('admin.training.assign', compact('training', 'staffList'));
     }
 
-    public function updateStatus(Request $request, $id, $userId)
-    {
-        if (!$this->isAdmin()) {
-            abort(403, 'Unauthorized.');
-        }
 
-        $request->validate([
-            'status' => 'required|in:Assigned,Attended,Missed,Completed'
-        ]);
 
-        $training = TrainingProgram::findOrFail($id);
+//==========================================================================================================================
 
-        $training->participants()->updateExistingPivot($userId, [
-            'status' => $request->status
-        ]);
 
-        return back()->with('success', 'Participant Status Updated!');
+   public function updateStatus(Request $request, $id, $userId)
+{
+    if (!$this->isAdmin()) {
+        abort(403, 'Unauthorized.');
     }
+
+    $request->validate([
+        'status' => 'required|in:Assigned,Attended,Missed,Completed',
+        'reason' => 'nullable|string|max:255' 
+    ]);
+
+    $training = TrainingProgram::findOrFail($id);
+
+ 
+    $reason = ($request->status === 'Missed') ? $request->reason : null;
+
+    $training->participants()->updateExistingPivot($userId, [
+        'status' => $request->status,
+        'reason' => $reason 
+    ]);
+
+    return back()->with('success', 'Participant Status Updated!');
+}
+
+
+//==========================================================================================================================
+
+
 
     public function storeFeedback(Request $request, $id)
     {
@@ -147,6 +189,13 @@ if (!is_null($training->capacity)) {
         return back()->with('success', 'Thank you for your feedback!');
     }
 
+
+
+//==========================================================================================================================
+
+
+
+
     public function destroy($id)
     {
         if (!$this->isAdmin()) {
@@ -159,6 +208,12 @@ if (!is_null($training->capacity)) {
         return redirect()->route('training.index')->with('success', 'Training Deleted.');
     }
 
+
+//==========================================================================================================================
+
+
+
+
     public function edit($id)
     {
         $training = TrainingProgram::findOrFail($id);
@@ -166,8 +221,17 @@ if (!is_null($training->capacity)) {
     }
 
 
+
+//==========================================================================================================================
+
+
+
+
+
+
 public function update(Request $request, $id)
 {
+   
     $request->validate([
         'title'      => 'required|string|max:255',
         'venue'      => 'required|string|max:255',
@@ -177,6 +241,14 @@ public function update(Request $request, $id)
     ]);
 
     $training = TrainingProgram::findOrFail($id);
+
+   
+    $currentCount = $training->participants()->count(); 
+    if ($request->capacity < $currentCount) {
+        return back()
+            ->withErrors(['capacity' => "Currently, {$currentCount} people have signed up. The maximum cannot be lower than the current number!"])
+            ->withInput(); 
+    }
     
     $training->update([
         'title'      => $request->title,
@@ -189,6 +261,16 @@ public function update(Request $request, $id)
 
     return redirect()->route('training.show', $id)->with('success', 'Updated!');
 }
+
+
+
+
+//==========================================================================================================================
+
+
+
+
+
     public function records(Request $request)
     {
         $staffList = User::where('role', 'Staff')->get();
@@ -200,6 +282,13 @@ public function update(Request $request, $id)
 
         return view('training.records', compact('staffList', 'selectedUser'));
     }
+
+
+
+//==========================================================================================================================
+
+
+
 
     public function detachParticipant($id, $userId)
     {

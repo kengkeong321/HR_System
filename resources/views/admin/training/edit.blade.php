@@ -19,43 +19,48 @@
 
                 <div class="form-group">
                     <label>Training Title</label>
-                    <input type="text" name="title" class="form-control" value="{{ $training->title }}" required>
+                    <input type="text" name="title" class="form-control" value="{{ old('title', $training->title) }}" required>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group col-md-8">
                         <label>Venue / Location</label>
-                        <input type="text" name="venue" class="form-control" value="{{ $training->venue }}" required>
+                        <input type="text" name="venue" class="form-control" value="{{ old('venue', $training->venue) }}" required>
                     </div>
-                   <div class="form-group col-md-4">
-    <label>Max Participants (Capacity)</label>
-    <input type="number" name="capacity" class="form-control @error('capacity') is-invalid @enderror" 
-           value="{{ old('capacity', $training->capacity) }}" 
-           min="1" required placeholder="e.g. 50">
-    <small class="form-text text-muted">Limit the number of staff allowed.</small>
-    @error('capacity') <div class="invalid-feedback">{{ $message }}</div> @enderror
-</div>
+                    <div class="form-group col-md-4">
+                        <label>Max Participants (Capacity)</label>
+                        <input type="number" name="capacity" 
+                               class="form-control @error('capacity') is-invalid @enderror" 
+                               value="{{ old('capacity', $training->capacity) }}" 
+                               min="{{ $training->participants->count() }}" 
+                               required>
+                        <small class="form-text text-muted">Currently assigned: {{ $training->participants->count() }} staff.</small>
+                        @error('capacity')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
                 </div>
+
                 <div class="form-row">
                     <div class="form-group col-md-6">
                         <label>Start Time</label>
                         <input type="datetime-local" name="start_time" class="form-control" 
-                               value="{{ date('Y-m-d\TH:i', strtotime($training->start_time)) }}" required>
+                               value="{{ old('start_time', date('Y-m-d\TH:i', strtotime($training->start_time))) }}" required>
                     </div>
                     <div class="form-group col-md-6">
                         <label>End Time</label>
                         <input type="datetime-local" name="end_time" class="form-control" 
-                               value="{{ date('Y-m-d\TH:i', strtotime($training->end_time)) }}" required>
+                               value="{{ old('end_time', date('Y-m-d\TH:i', strtotime($training->end_time))) }}" required>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Description</label>
-                    <textarea name="description" class="form-control" rows="4">{{ $training->description }}</textarea>
+                    <textarea name="description" class="form-control" rows="4">{{ old('description', $training->description) }}</textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary">Update Training</button>
-                <a href="{{ route('training.show', $training->id) }}" class="btn btn-secondary">Cancel</a>
+               <a href="{{ route('training.index') }}" class="btn btn-secondary">Cancel</a>
             </form>
 
         </div>
