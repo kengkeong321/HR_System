@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\ClaimController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\LeaveController;
 use App\Http\Controllers\PayslipController;
+use App\Http\Controllers\Staff\StaffClaimController;
 
 /*
 |--------------------------------------------------------------------------
@@ -97,6 +98,21 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     });
     Route::resource('payroll', PayrollController::class)->except(['show', 'create', 'store']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Allowance (Admin only)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('claims')->name('claims.')->group(function () {
+        
+        Route::get('/', [ClaimController::class, 'index'])->name('index');
+
+        Route::post('/{id}/approve', [ClaimController::class, 'approve'])->name('approve');
+
+        Route::post('/{id}/reject', [ClaimController::class, 'reject'])->name('reject');
+    });
+
+
     // --- Faculty, Department, Course CRUD ---
     Route::resource('faculties', \App\Http\Controllers\Admin\FacultyController::class)->except(['show', 'destroy']);
     Route::patch('faculties/{faculty}/status', [\App\Http\Controllers\Admin\FacultyController::class, 'toggleStatus'])->name('faculties.toggleStatus');
@@ -125,17 +141,20 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
     // Attendance
     Route::get('/attendance', [AttendanceController::class, 'staffCreate'])->name('attendance.create');
     Route::post('/attendance/store', [AttendanceController::class, 'staffStore'])->name('attendance.store');
-
+    
+    // payslip
     Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
     Route::get('/payroll/{id}/export', [PayrollController::class, 'exportSlip'])->name('payroll.export');
 
+    // leave
     Route::get('/leave', [LeaveController::class, 'staffIndex'])->name('leave.index');
-    
-    // Action to save the leave request
     Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
+    
+    // claims
     Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
     Route::post('/claims/store', [ClaimController::class, 'store'])->name('claims.store');
-    Route::get('/claims/history', [ClaimController::class, 'index'])->name('claims.index');
+    
+    Route::get('/my-claims', [StaffClaimController::class, 'myHistory'])->name('claims.index');
 });
 
 /*

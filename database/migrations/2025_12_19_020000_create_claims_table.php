@@ -6,23 +6,38 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-public function up()
-{
-    Schema::create('claims', function (Blueprint $table) {
-        $table->id();
-        $table->unsignedBigInteger('staff_id'); 
-        $table->string('claim_type');
-        $table->decimal('amount', 10, 2);
-        $table->text('description');
-        $table->string('receipt_path')->nullable();
-        $table->enum('status', ['Pending', 'Approved', 'Rejected'])->default('Pending');
-        $table->text('rejection_reason')->nullable();
-        $table->timestamps();
+    public function up(): void
+    {
+        Schema::create('claims', function (Blueprint $table) {
+            $table->id();
+            
+            // Link to the staff member making the claim
+            $table->unsignedBigInteger('staff_id');
 
-        // Basic Foreign Key
-        $table->foreign('staff_id')->references('staff_id')->on('staff')->onDelete('cascade');
-    });
-}
+            // Claim Details
+            $table->string('description');
+            $table->decimal('amount', 10, 2); // Supports values up to 99,999,999.99
+            $table->string('receipt_path')->nullable(); // Stores the file path for the image/PDF
+
+            // Workflow Status Management
+            $table->string('status')->default('Pending'); // Values: Pending, Approved, Rejected
+
+            // Audit Trail: Approval
+            $table->unsignedBigInteger('approved_by')->nullable(); // Links to the HR user (User 7)
+            $table->timestamp('approved_at')->nullable();
+
+            // Audit Trail: Rejection
+            $table->unsignedBigInteger('rejected_by')->nullable(); // Links to the HR user
+            $table->text('rejection_reason')->nullable(); // Required if status is Rejected
+
+            $table->timestamps();
+
+            // Foreign Key Constraints (Data Integrity)
+            $table->foreign('staff_id')->references('staff_id')->on('staff')->onDelete('cascade');
+            $table->foreign('approved_by')->references('id')->on('users')->onDelete('set null');
+            $table->foreign('rejected_by')->references('id')->on('users')->onDelete('set null');
+        });
+    }
 
     public function down(): void
     {
