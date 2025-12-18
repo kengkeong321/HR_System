@@ -14,17 +14,22 @@ class AttendanceController extends Controller
 
     public function index(Request $request)
     {
+        // 1. Initialize query with user relationship
         $query = Attendance::with('user');
 
+        // 2. Filter by User ID (passed from the 'Verify' link in Payroll)
         if ($request->has('user_id')) {
             $query->where('user_id', $request->user_id);
         }
 
+        // 3. Filter by Month (passed from Payroll, e.g., 'June')
         if ($request->has('month')) {
+            // Convert month name to number (e.g., 'June' becomes 6)
             $monthNumber = date('m', strtotime($request->month));
             $query->whereMonth('attendance_date', $monthNumber);
         }
 
+        // 4. Fetch the results (keeping your original ordering)
         $attendances = $query->orderBy('attendance_date', 'desc')->get();
 
         return view('admin.attendance.index', compact('attendances'));

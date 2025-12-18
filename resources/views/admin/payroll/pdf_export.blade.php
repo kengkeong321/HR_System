@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Payroll Disbursement Report - {{ $batch->month_year }}</title>
     <style>
@@ -41,6 +42,7 @@
         .clear { clear: both; }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>Payroll Disbursement Report</h1>
@@ -103,4 +105,5 @@
     </div>
     <div class="clear"></div>
 </body>
+
 </html>
