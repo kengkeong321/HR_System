@@ -49,4 +49,9 @@ class User extends Authenticatable
     {
         return hash('sha256', $plain) === $this->password;
     }
+
+    public function staff()
+    {
+        return $this->hasOne(Staff::class, 'user_id');
+    }
 }

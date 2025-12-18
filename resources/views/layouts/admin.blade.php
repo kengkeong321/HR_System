@@ -96,15 +96,26 @@
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" href="{{ route('admin.faculties.index') }}"><i class="bi bi-building me-2"></i><span class="label">Faculties</span></a>
             </li>
+
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" href="{{ route('admin.departments.index') }}"><i class="bi bi-diagram-3 me-2"></i><span class="label">Departments</span></a>
             </li>
+
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" href="{{ route('admin.courses.index') }}"><i class="bi bi-journal-bookmark me-2"></i><span class="label">Courses</span></a>
             </li>
+
+            <li class="nav-item">
+              <a class="nav-link d-flex align-items-center" href="{{ route('admin.payroll.index') }}">
+                <i class="bi bi-cash-stack me-2"></i>
+                <span class="label">Payroll</span>
+              </a>
+            </li>
+
             <li class="nav-item">
               <a class="nav-link d-flex align-items-center" href="{{ route('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i><span class="label">Dashboard</span></a>
             </li>
+
             <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ml-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
                 ATTENDANCE
             </div>
