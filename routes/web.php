@@ -169,4 +169,6 @@ Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(funct
     Route::match(['get', 'post'], '/training/records', [App\Http\Controllers\Admin\TrainingController::class, 'records'])->name('training.records');
     Route::post('/training/{id}/user/{userId}/status', [TrainingController::class, 'updateStatus'])->name('training.status');
     Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
+    Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])
+     ->name('training.updateStatus');
 });

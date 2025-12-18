@@ -22,50 +22,49 @@
             <div class="table-responsive">
                 <table class="table table-bordered table-hover" id="dataTable" width="100%" cellspacing="0">
                     <thead class="thead-light">
-                        <tr>
+                        <tr class="text-center">
                             <th>Title</th>
                             <th>Venue</th>
                             <th>Start Date</th>
-                            <th>End Date</th> <th>Participants</th> <th style="min-width: 280px;">Action</th> 
+                            <th>End Date</th> 
+                            <th>Participants</th> 
+                            <th style="min-width: 150px;">Action</th> 
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($trainings as $training)
                         <tr>
-                            <td class="align-middle">{{ $training->title }}</td>
+                            <td class="align-middle font-weight-bold">{{ $training->title }}</td>
                             <td class="align-middle">{{ $training->venue }}</td>
-                            <td class="align-middle">{{ $training->start_time }}</td>
-                            <td class="align-middle">{{ $training->end_time }}</td>
+                            <td class="align-middle text-center small">{{ $training->start_time }}</td>
+                            <td class="align-middle text-center small">{{ $training->end_time }}</td>
                             
                             <td class="align-middle text-center">
                                 @php
                                     $currentCount = $training->participants->count();
-                                    $isFull = $training->capacity && $currentCount >= $training->capacity;
+                                    $capacity = $training->capacity;
+                                    $isFull = $capacity > 0 && $currentCount >= $capacity;
                                 @endphp
-                                <span class="badge {{ $isFull ? 'badge-danger' : 'badge-info' }}" style="font-size: 0.9rem;">
-                                    <i class="fas fa-users"></i> {{ $currentCount }} / {{ $training->capacity ?? '∞' }}
-                                </span>
+                                
+                                <div style="font-size: 1rem; color: #000 !important; font-weight: 700;">
+                                    <i class="fas fa-user {{ $isFull ? 'text-danger' : 'text-info' }}" style="margin-right: 5px;"></i>
+                                    <span style="color: #000 !important;">{{ $currentCount }} / {{ $capacity ?? '∞' }}</span>
+                                </div>
                             </td>
 
-                            <td class="align-middle">
-                                <a href="{{ route('training.show', $training->id) }}" class="btn btn-info btn-sm mb-1" title="View Details">
-                                    <i class="fas fa-eye"></i> View
+                            <td class="align-middle text-center">
+                             
+                                <a href="{{ route('training.show', $training->id) }}" class="btn btn-info btn-sm shadow-sm">
+                                    <i class="fas fa-eye"></i> View & Edit
                                 </a>
 
                                 @if(session('role') === 'Admin' || (isset($isAdmin) && $isAdmin))
-                                    <a href="{{ route('training.assignPage', $training->id) }}" class="btn btn-success btn-sm mb-1" title="Assign Staff">
-                                        <i class="fas fa-user-plus"></i> Assign
-                                    </a>
-
-                                    <a href="{{ route('training.edit', $training->id) }}" class="btn btn-warning btn-sm mb-1" title="Edit">
-                                        <i class="fas fa-edit"></i> Edit
-                                    </a>
-
+                               
                                     <form action="{{ route('training.destroy', $training->id) }}" method="POST" style="display:inline;">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm mb-1" onclick="return confirm('Confirm Delete?')" title="Delete">
-                                            <i class="fas fa-trash"></i> Delete
+                                        <button type="submit" class="btn btn-danger btn-sm shadow-sm" onclick="return confirm('Confirm Delete?')">
+                                            <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
                                 @endif
