@@ -23,6 +23,6 @@ class PayslipController extends Controller
         $payrolls = $user->staff->payrolls()->orderBy('year', 'desc')->orderBy('month', 'desc')->get();
 
         // 4. Return the view
-        return view('payslip.my_history', compact('payrolls'));
+        return view('staff.payroll.my_payslips', compact('payrolls'));
     }
 }

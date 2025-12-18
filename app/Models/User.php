@@ -18,7 +18,7 @@ class User extends Authenticatable
      * @var list<string>
      */
     // Match the existing database in phpMyAdmin (table name is `User`)
-    protected $table = 'User';
+    protected $table = 'user';
     protected $primaryKey = 'user_id';
     public $incrementing = true;
     public $timestamps = false;
@@ -52,6 +52,6 @@ class User extends Authenticatable
 
     public function staff()
     {
-        return $this->hasOne(Staff::class, 'user_id');
+        return $this->hasOne(Staff::class, 'user_id', 'user_id');
     }
 }

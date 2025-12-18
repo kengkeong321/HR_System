@@ -40,9 +40,7 @@
               </li>
 
               <li class="nav-item">
-                <a class="nav-link" href="{{ route('my.payslips') }}">
-                   My Payslips
-                </a>
+                <a class="nav-link" href="{{ route('staff.payroll.my_payslips') }}">
               </li>
               
               <li class="nav-item">

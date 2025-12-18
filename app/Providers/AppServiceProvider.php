@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Gate::policy(\App\Models\Payroll::class, \App\Policies\PayrollPolicy::class);
     }
+
+    protected $policies = [
+    \App\Models\Payroll::class => \App\Policies\PayrollPolicy::class,
+];
 }
