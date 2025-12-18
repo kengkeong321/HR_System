@@ -44,10 +44,19 @@ class PayrollController extends Controller
         return $this->batch_view($id);
     }
 
-    public function batch_view($id)
+   public function batch_view($id)
     {
         $batch = DB::table('payroll_batches')->where('id', $id)->first();
+        
+        // Check if batch exists to avoid further errors
+        if (!$batch) {
+            return redirect()->route('admin.payroll.index')->with('error', 'Batch not found.');
+        }
+
         $payrolls = Payroll::with('staff')->where('batch_id', $id)->get();
+
+        // 1. CALL THE TOTALS HELPER HERE
+        $totals = $this->getBatchStatutoryTotals($id);
 
         // Attach attendance count to each payroll object
         foreach ($payrolls as $payroll) {
@@ -63,7 +72,14 @@ class PayrollController extends Controller
         $rejectionReasons = DB::table('rejection_reasons')->get();
         $varianceMsg = "Data loaded successfully";
 
-        return view('admin.payroll.batch_view', compact('batch', 'payrolls', 'varianceMsg', 'rejectionReasons'));
+        // 2. PASS $totals TO THE COMPACT FUNCTION
+        return view('admin.payroll.batch_view', compact(
+            'batch', 
+            'payrolls', 
+            'varianceMsg', 
+            'rejectionReasons', 
+            'totals'
+        ));
     }
 
     // ==========================================
@@ -348,31 +364,33 @@ class PayrollController extends Controller
     }
 
     private function getBatchStatutoryTotals($batchId)
-{
-    $payrolls = Payroll::where('batch_id', $batchId)->get();
-    
-    $totals = [
-        'epf_employee' => 0,
-        'epf_employer' => 0,
-        'socso_employee' => 0,
-        'socso_employer' => 0,
-        'eis_total' => 0,
-        'net_salary' => 0
-    ];
-
-    foreach ($payrolls as $payroll) {
-        $data = json_decode($payroll->breakdown, true); // Pull from Snapshot
+    {
+        $payrolls = Payroll::where('batch_id', $batchId)->get();
         
-        $totals['epf_employee']  += $data['calculated_amounts']['epf_employee_rm'] ?? 0;
-        $totals['epf_employer']  += $data['calculated_amounts']['epf_employer_rm'] ?? 0;
-        $totals['socso_employee'] += $data['calculated_amounts']['socso_employee_rm'] ?? 0;
-        $totals['socso_employer'] += $data['calculated_amounts']['socso_employer_rm'] ?? 0;
-        $totals['eis_total']     += ($data['calculated_amounts']['eis_rm'] ?? 0) * 2; // Employee + Employer
-        $totals['net_salary']    += $payroll->net_salary;
-    }
+        $totals = [
+            'epf_employee' => 0,
+            'epf_employer' => 0,
+            'socso_employee' => 0,
+            'socso_employer' => 0,
+            'eis_total' => 0,
+            'net_salary' => 0
+        ];
 
-    return $totals;
-}
+        foreach ($payrolls as $payroll) {
+            // Pull from the JSON Snapshot created during the 'update' or 'generate' process
+            $data = json_decode($payroll->breakdown, true); 
+            
+            $totals['epf_employee']   += $data['calculated_amounts']['epf_employee_rm'] ?? 0;
+            $totals['epf_employer']   += $data['calculated_amounts']['epf_employer_rm'] ?? 0;
+            $totals['socso_employee'] += $data['calculated_amounts']['socso_employee_rm'] ?? 0;
+            $totals['socso_employer'] += $data['calculated_amounts']['socso_employer_rm'] ?? 0;
+            // EIS is usually 0.2% from both parties in Malaysia
+            $totals['eis_total']      += ($data['calculated_amounts']['eis_rm'] ?? 0) * 2; 
+            $totals['net_salary']     += $payroll->net_salary;
+        }
+
+        return $totals;
+    }
 
 
     /**
