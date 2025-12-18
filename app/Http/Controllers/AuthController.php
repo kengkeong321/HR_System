@@ -35,9 +35,9 @@ class AuthController extends Controller
         session(["user_id" => $user->user_id, "user_name" => $user->user_name, "role" => $user->role]);
 
         // Redirection Logic [89]
-        if ($user->role === 'Admin') {
+        if (in_array($user->role, ['Admin', 'HR', 'Finance'])) {
             return redirect()->route('admin.dashboard');
-        } elseif ($user->role === 'Staff') {
+        }elseif ($user->role === 'Staff') {
             return redirect()->route('staff.dashboard');
         }
 
