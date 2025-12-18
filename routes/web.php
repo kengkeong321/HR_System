@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\PayrollSettingController;
 use App\Http\Controllers\Admin\ClaimController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\LeaveController;
+use App\Http\Controllers\PayslipController;
 
 /*
 |--------------------------------------------------------------------------
@@ -49,7 +50,7 @@ Route::middleware(['auth'])->group(function () {
 
     // --- Staff Payslip View ---
     // Moved here so non-admin staff can access their own history
-    Route::get('/my-payslips', [PayrollController::class, 'myPayslips'])->name('my.payslips');
+    Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
 
     // Individual PDF Download (Reuse Admin Controller Export)
     Route::get('/payroll/export-slip/{id}', [PayrollController::class, 'exportSlip'])->name('admin.payroll.export_slip');
@@ -125,17 +126,16 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
     Route::get('/attendance', [AttendanceController::class, 'staffCreate'])->name('attendance.create');
     Route::post('/attendance/store', [AttendanceController::class, 'staffStore'])->name('attendance.store');
 
-    Route::get('/my-payslips', [PayrollController::class, 'myPayslips'])->name('payroll.my_payslips');
+    Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
     Route::get('/payroll/{id}/export', [PayrollController::class, 'exportSlip'])->name('payroll.export');
 
-    Route::get('/claims/create', [App\Http\Controllers\Admin\ClaimController::class, 'create'])->name('claims.create');
-    Route::post('/claims/store', [App\Http\Controllers\Admin\ClaimController::class, 'store'])->name('claims.store');
-    Route::get('/claims/history', [App\Http\Controllers\Admin\ClaimController::class, 'index'])->name('claims.index');
-    // Page to view and apply for leave
     Route::get('/leave', [LeaveController::class, 'staffIndex'])->name('leave.index');
     
     // Action to save the leave request
     Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
+    Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
+    Route::post('/claims/store', [ClaimController::class, 'store'])->name('claims.store');
+    Route::get('/claims/history', [ClaimController::class, 'index'])->name('claims.index');
 });
 
 /*

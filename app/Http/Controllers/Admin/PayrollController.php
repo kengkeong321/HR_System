@@ -12,6 +12,7 @@ use App\Models\Payroll;
 use App\Business\Services\PayrollService;
 use App\Business\Strategies\EPFStrategy;
 use Barryvdh\DomPDF\Facade\Pdf;
+use \Illuminate\Support\Facades\Auth;
 
 class PayrollController extends Controller
 {
@@ -162,7 +163,7 @@ class PayrollController extends Controller
     {
         try {
             // 1. Ownership Verification: Contextual lookup
-            $userId = auth()->id();
+            $userId = Auth::id();
             $staff = Staff::where('user_id', $userId)->first();
 
             if (!$staff) {
@@ -280,7 +281,7 @@ class PayrollController extends Controller
                     'socso_employer_rm' => $socsoEmployer,
                     'eis_rm' => $eisVal
                 ],
-                'updated_by' => auth()->id(),
+                'updated_by' => Auth::id(),
                 'ip_address' => $request->ip()
             ];
 

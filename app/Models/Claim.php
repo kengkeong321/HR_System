@@ -11,14 +11,15 @@ class Claim extends Model
 
     protected $table = 'claims'; 
     protected $fillable = [
-    'staff_id', 
-    'claim_type', 
-    'amount', 
-    'description', 
-    'receipt_path', 
-    'status', 
-    'rejection_reason'
-];
+        'staff_id',
+        'claim_type',
+        'amount',
+        'description',
+        'receipt_path',
+        'status',
+        'rejection_reason',
+        'action_by'
+    ];
 
     /**
      * The owner of the claim
