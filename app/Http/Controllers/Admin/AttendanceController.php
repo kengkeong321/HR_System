@@ -4,9 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-// Fix for the 'Log' error:
-use Illuminate\Support\Facades\Log; 
-// Fix for the 'Auth' error:
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Attendance;
 use Illuminate\Support\Facades\DB;
@@ -14,19 +12,30 @@ use Illuminate\Support\Facades\DB;
 class AttendanceController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
-        // Admin Check: Observer viewing all logs
-        $attendances = Attendance::with('user')->orderBy('attendance_date', 'desc')->get();
+        $query = Attendance::with('user');
+
+        if ($request->has('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->has('month')) {
+            $monthNumber = date('m', strtotime($request->month));
+            $query->whereMonth('attendance_date', $monthNumber);
+        }
+
+        $attendances = $query->orderBy('attendance_date', 'desc')->get();
+
         return view('admin.attendance.index', compact('attendances'));
     }
 
-   public function create(Request $request)
+    public function create(Request $request)
     {
         $search = $request->input('search');
-        
+
         // FIX: Always initialize as an empty array, not null
-        $users = []; 
+        $users = [];
 
         if ($search) {
             $users = \App\Models\User::where('user_name', 'LIKE', "%{$search}%")

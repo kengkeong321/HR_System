@@ -10,16 +10,18 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-/* --- Sidebar Custom Fixes --- */
-.sidebar ul, 
-.sidebar li,
-.sidebar .nav-item {
-    list-style: none !important;
-    list-style-type: none !important;
-    display: block !important; 
-    margin-left: 0 !important;
-}
+/* --- Sidebar Custom --- */
+@layer base {
+    .sidebar ul, 
+    .sidebar li,
+    .sidebar .nav-item {
+        list-style: none !important;
+        list-style-type: none !important;
+        display: block !important; 
+        margin-left: 0 !important;
+    }
 
-.sidebar .nav {
-    padding-left: 0 !important;
+    .sidebar .nav {
+        padding-left: 0 !important;
+    }
 }

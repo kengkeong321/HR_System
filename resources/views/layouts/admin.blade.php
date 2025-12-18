@@ -186,6 +186,13 @@
             PAYROLL & ALLOWANCES
           </div>
 
+          <li class="nav-item {{ Request::is('admin/payroll/settings*') ? 'active' : '' }}">
+            <a class="nav-link" href="{{ route('admin.payroll.settings.index') }}">
+              <i class="bi bi-gear-fill"></i>
+              <span>Payroll Settings</span>
+            </a>
+          </li>
+
           <li class="nav-item"> <a href="{{ route('admin.payroll.index') }}"
               class="nav-link {{ request()->routeIs('admin.payroll.*') ? 'active' : '' }} d-flex align-items-center">
               <i class="bi bi-cash-stack me-2" style="width: 20px; text-align: center;"></i>
@@ -195,17 +202,17 @@
         </ul>
 
         <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ml-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                  System Config
+          System Config
         </div>
 
         <ul class="nav flex-column ms-0 p-0" style="list-style: none;">
-            <li class="nav-item">
-                <a href="{{ route('admin.settings.index') }}" 
-                  class="nav-link d-flex align-items-center {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"
-                  style="margin-left: -2%;"> <i class="bi bi-gear me-2" style="width: 25px; text-align: center;"></i>
-                    <span class="label">Settings</span>
-                </a>
-            </li>
+          <li class="nav-item">
+            <a href="{{ route('admin.settings.index') }}"
+              class="nav-link d-flex align-items-center {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}"
+              style="margin-left: -2%;"> <i class="bi bi-gear me-2" style="width: 25px; text-align: center;"></i>
+              <span class="label">Settings</span>
+            </a>
+          </li>
         </ul>
 
       </aside>

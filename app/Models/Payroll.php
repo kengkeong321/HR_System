@@ -25,6 +25,7 @@ class Payroll extends Model
         'deduction',
         'net_salary',
         'status',
+        'attendance_count',
         'allowance_remark',
         'breakdown'
     ];
