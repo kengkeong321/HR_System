@@ -130,3 +130,33 @@ Route::post('/_sidebar/toggle', function (\Illuminate\Http\Request $request) {
     session(['sidebar_collapsed' => (bool) $request->input('collapsed')]);
     return response()->json(['ok' => true]);
 });
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| training
+|--------------------------------------------------------------------------
+*/
+
+
+use App\Http\Controllers\Admin\TrainingController;
+
+Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(function () {
+    
+    
+    Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
+    Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
+    Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
+    Route::get('/training/create/new', [TrainingController::class, 'create'])->name('training.create');
+    Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
+    Route::delete('/training/{id}', [TrainingController::class, 'destroy'])->name('training.destroy');
+    Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
+    Route::post('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assign'])->name('training.assign');
+    Route::get('/training/{id}/edit', [TrainingController::class, 'edit'])->name('training.edit');
+    Route::put('/training/{id}', [TrainingController::class, 'update'])->name('training.update');
+    Route::match(['get', 'post'], '/training/records', [App\Http\Controllers\Admin\TrainingController::class, 'records'])->name('training.records');
+    Route::post('/training/{id}/user/{userId}/status', [TrainingController::class, 'updateStatus'])->name('training.status');
+    Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
+});
