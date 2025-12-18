@@ -194,6 +194,21 @@
           </li>
         </ul>
 
+
+        <ul class="nav flex-column">
+          <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ml-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+            LEAVE APPROVAL
+          </div>
+            <li class="nav-item">
+                <a href="{{ route('leave.index') }}" 
+                  class="nav-link d-flex align-items-center {{ request()->routeIs('admin.leave.*') ? 'active' : '' }}"
+                  style=""> <i class="bi bi-calendar2-check me-2" style="width: 20px; text-align: center;"></i>
+                    <span class="label">Leave Requests</span>
+                </a>
+            </li>
+        </ul>
+
+
         <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ml-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
                   System Config
         </div>

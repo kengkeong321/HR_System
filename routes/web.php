@@ -7,6 +7,7 @@ use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\PayrollController; 
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\LeaveController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,6 +40,10 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/admin/attendance/{id}/update', [AttendanceController::class, 'update'])->name('admin.attendance.update');
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
     Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
+    Route::get('/admin/leave', [LeaveController::class, 'adminIndex'])->name('leave.index');
+    
+    // Use PATCH for state updates to comply with Data Protection [138]
+    Route::patch('/admin/leave/{id}/update', [LeaveController::class, 'adminUpdate'])->name('leave.update');
 
     // --- Staff Payslip View ---
     // Moved here so non-admin staff can access their own history
@@ -118,6 +123,11 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
     // The staff attendance marking screen
     Route::get('/attendance', [AttendanceController::class, 'staffCreate'])->name('attendance.create');
     Route::post('/attendance/store', [AttendanceController::class, 'staffStore'])->name('attendance.store');
+    // Page to view and apply for leave
+    Route::get('/leave', [LeaveController::class, 'staffIndex'])->name('leave.index');
+    
+    // Action to save the leave request
+    Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
 });
 
 /*
