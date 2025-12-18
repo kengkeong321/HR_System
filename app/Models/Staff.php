@@ -22,19 +22,16 @@ class Staff extends Model
         'join_date'
     ];
 
-    // Link back to User login info
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
-    // Link to Department
     public function department()
     {
         return $this->belongsTo(Department::class, 'depart_id', 'depart_id');
     }
 
-    // Link to Payroll History
     public function payrolls()
     {
         return $this->hasMany(Payroll::class, 'staff_id', 'staff_id');

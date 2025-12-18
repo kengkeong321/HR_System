@@ -9,31 +9,28 @@ class Claim extends Model
 {
     use HasFactory;
 
-    protected $table = 'claims'; 
     protected $fillable = [
         'staff_id',
         'claim_type',
-        'amount',
         'description',
+        'amount',
         'receipt_path',
         'status',
         'rejection_reason',
-        'action_by'
+        'approved_by',
+        'approved_at',
+        'rejected_by'
     ];
 
-    /**
-     * The owner of the claim
-     */
+    // Relationship to Staff
     public function staff()
     {
         return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
     }
 
-    /**
-     * The HR/Admin who acted on the claim
-     */
+    // Relationship to Approver (HR User)
     public function approver()
     {
-        return $this->belongsTo(User::class, 'action_by');
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

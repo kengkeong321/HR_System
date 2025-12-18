@@ -49,20 +49,21 @@
                                 </td>
                                 <td>
                                     @if($claim->status == 'Pending')
-                                        <span class="badge bg-warning text-dark"><i class="bi bi-clock-history"></i> Pending</span>
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-clock-history"></i> Pending</span>
                                     @elseif($claim->status == 'Approved')
-                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Approved</span>
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Approved</span>
                                     @else
-                                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rejected</span>
+                                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rejected</span>
                                     @endif
                                 </td>
+
                                 <td class="text-end pe-4">
                                     @if($claim->receipt_path)
-                                        <a href="{{ asset('storage/' . $claim->receipt_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-file-earmark-pdf"></i> Receipt
-                                        </a>
+                                    <a href="{{ asset('storage/' . $claim->receipt_path) }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                        <i class="bi bi-eye"></i> View Receipt
+                                    </a>
                                     @else
-                                        <span class="text-muted small">No File</span>
+                                    <span class="text-muted small">No Receipt</span>
                                     @endif
                                 </td>
                             </tr>

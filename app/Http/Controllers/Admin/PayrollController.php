@@ -163,7 +163,7 @@ class PayrollController extends Controller
         $payroll->update([
             'net_salary' => $netSalary,
             'breakdown'   => $breakdown,
-            'deduction'   => $statutoryTotal // Store statutory as initial deduction
+            'deduction'   => $statutoryTotal 
         ]);
     }
 
@@ -225,7 +225,6 @@ class PayrollController extends Controller
             $staff = Staff::where('user_id', $userId)->first();
 
             if (!$staff) {
-                // Generic User Messaging
                 return back()->with('error', 'Profile not found. Please contact HR.');
             }
 
@@ -286,7 +285,6 @@ class PayrollController extends Controller
             }
 
             // 3. EFFECTIVE DATING: Fetch rates valid for this payroll's specific month/year
-            // In a full implementation, you would query effective_from <= $payroll_date
             $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
 
             DB::beginTransaction();
@@ -363,8 +361,7 @@ class PayrollController extends Controller
 
             // 1. SECURE LOGGING: Detailed error stays in the server logs
             Log::error("Payroll Update Failure [ID: $id]: " . $e->getMessage());
-
-            // 2. GENERIC MESSAGING: User sees a friendly, non-technical message
+            
             return back()->withInput()->with('error', 'Unable to process payroll action at this time. Please contact HR.');
         }
     }

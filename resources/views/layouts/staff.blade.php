@@ -37,7 +37,6 @@
     .sidebar .nav-link.active {
       background-color: #0d6efd;
       color: white !important;
-      rounded: 5px;
     }
 
     .sidebar-collapsed .sidebar {
@@ -88,58 +87,48 @@
             </a>
           </li>
 
-          <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3">Attendance</div>
-
+          <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3">Attendance</li>
+          
           <li class="nav-item">
-            <a href="{{ route('staff.attendance.create') }}"
-              class="nav-link d-flex align-items-center {{ request()->routeIs('staff.attendance.*') ? 'active' : '' }}">
+            <a href="{{ route('staff.attendance.create') }}" class="nav-link d-flex align-items-center {{ request()->routeIs('staff.attendance.*') ? 'active' : '' }}">
               <i class="fas fa-user-clock me-2" style="width: 20px;"></i>
               <span class="label">Mark Attendance</span>
             </a>
           </li>
-        </ul>
 
-        <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3 label">Financials</div>
+          <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3 label" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+             Financials
+          </li>
 
-        <li class="nav-item">
-          <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.payroll.*') ? 'active' : '' }}"
-            href="{{ route('staff.payroll.my_payslips') }}">
-            <i class="bi bi-wallet2 me-2"></i>
-            <span class="label">My Payslips</span>
-          </a>
-        </li>
-
-        <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3 label">Self-Service</div>
-
-        <li class="nav-item">
-          <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.claims.*') ? 'active' : '' }}"
-            href="{{ route('staff.claims.create') }}">
-            <i class="bi bi-file-earmark-plus me-2"></i>
-            <span class="label">Submit Claim</span>
-          </a>
-        </li>
-
-        <li class="nav-item">
-          <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.claims.*') ? 'active' : '' }}"
-            href="{{ route('staff.claims.index') }}">
-            <i class="bi bi-file-earmark-plus me-2"></i>
-            <span class="label">My Claims</span>
-
-            {{-- Use the variable shared by the AppServiceProvider --}}
-            @if(isset($sidebarRejectionCount) && $sidebarRejectionCount > 0)
-            <span class="badge rounded-pill bg-danger ms-auto">
-              {{ $sidebarRejectionCount }}
-            </span>
-            @endif
-          </a>
-        <li class="nav-item">
-            <a href="{{ route('staff.leave.index') }}" 
-              class="nav-link d-flex align-items-center {{ request()->routeIs('staff.leave.*') ? 'active' : '' }}">
-                <i class="bi bi-calendar-plus me-2"></i>
-                <p class="mb-0">Request Leave</p>
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.payroll.*') ? 'active' : '' }}" href="{{ route('staff.payroll.my_payslips') }}">
+              <i class="bi bi-wallet2 me-2"></i>
+              <span class="label">My Payslips</span>
             </a>
-        </li>
-      </aside>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.claims.create') ? 'active' : '' }}" href="{{ route('staff.claims.create') }}">
+              <i class="bi bi-plus-circle me-2"></i>
+              <span class="label">Submit Allowance Claim</span>
+            </a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.claims.index') ? 'active' : '' }}" href="{{ route('staff.claims.index') }}">
+              <i class="bi bi-list-check me-2"></i>
+              <span class="label">My Claims Status</span>
+              
+              {{-- Rejection Badge --}}
+              @if(isset($sidebarRejectionCount) && $sidebarRejectionCount > 0)
+              <span class="badge rounded-pill bg-danger ms-auto">
+                {{ $sidebarRejectionCount }}
+              </span>
+              @endif
+            </a>
+          </li>
+        </ul> 
+        </aside>
 
       <main class="col p-4">
         @yield('content')
