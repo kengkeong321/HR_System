@@ -125,16 +125,21 @@ class AttendanceController extends Controller
 
     public function staffCreate()
     {
-        // Get the logged-in user's ID from the session
         $userId = session('user_id');
         $today = now()->toDateString();
 
-        // Check if the staff has already recorded attendance today
+        // Fetch today's record to control the buttons
         $attendance = \App\Models\Attendance::where('user_id', $userId)
             ->where('attendance_date', $today)
             ->first();
 
-        return view('staff.attendance', compact('attendance'));
+        // Fetch the last 5 records for the history table
+        $history = \App\Models\Attendance::where('user_id', $userId)
+            ->orderBy('attendance_date', 'desc')
+            ->take(5)
+            ->get();
+
+        return view('staff.attendance', compact('attendance', 'history'));
     }
 
     public function staffStore(Request $request)

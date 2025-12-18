@@ -93,6 +93,42 @@
     </div>
 @endif
 
+<div class="mt-5">
+    <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Attendance History</h5>
+    <div class="table-responsive">
+        <table class="table table-hover bg-white rounded shadow-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>Date</th>
+                    <th>In</th>
+                    <th>Out</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($history as $record)
+                <tr>
+                    <td>{{ date('d M Y', strtotime($record->attendance_date)) }}</td>
+                    <td>{{ $record->clock_in_time ? date('h:i A', strtotime($record->clock_in_time)) : '-' }}</td>
+                    <td>{{ $record->clock_out_time ? date('h:i A', strtotime($record->clock_out_time)) : '-' }}</td>
+                    <td>
+                        @if($record->status == 'Late')
+                            <span class="badge bg-danger text-white">Late</span>
+                        @else
+                            <span class="badge bg-success text-white">Present</span>
+                        @endif
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-3">No records found yet.</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
 <script>
     // Auto-hide the error flash message using your CSS transition logic
     const errorFlash = document.getElementById('flash-error');
