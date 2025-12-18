@@ -753,7 +753,7 @@
             },
             "time": "2024-04-29T13:26:35+00:00",
             "type": "library",
-            "installation-source": "dist",
+            "installation-source": "source",
             "autoload": {
                 "psr-4": {
                     "Svg\\": "src/Svg"
