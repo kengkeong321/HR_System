@@ -46,48 +46,49 @@
         <div>
             <h1 class="h3 mb-0 text-gray-800">Batch: {{ $batch->month_year }}</h1>
             <span class="badge bg-{{ 
-                $batch->status == 'Paid' ? 'success' : 
-                ($batch->status == 'Draft' ? 'secondary' : 'info') 
-            }} fs-6">
-                Status: {{ $batch->status }}
+            $batch->status == 'Paid' ? 'success' : 
+            ($batch->status == 'Draft' ? 'secondary' : 'info') 
+        }} fs-6">
+                Status: {{ str_replace('_', ' ', $batch->status) }}
             </span>
         </div>
 
-        <div>
-            {{-- LEVEL 1: HR APPROVAL --}}
-            @if($batch->status == 'Draft')
-            <form action="{{ route('admin.payroll.approve_l1', $batch->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Confirm L1 Approval? This will LOCK the batch from further edits.');">
+        <div class="btn-group">
+            {{-- LEVEL 1: HR APPROVAL (Only visible to HR when in Draft) --}}
+            @if(auth()->user()->role === 'HR' && $batch->status == 'Draft')
+            <form action="{{ route('admin.payroll.approve_l1', $batch->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Confirm L1 Approval? This will LOCK the batch and send it to Finance.');">
                 @csrf
-                <button class="btn btn-info text-white">
-                    <i class="bi bi-check-circle"></i> Submit for Level 1 (HR)
+                <button type="submit" class="btn btn-info text-white">
+                    <i class="bi bi-check-circle"></i> HR Approval (L1)
                 </button>
             </form>
             @endif
 
-            {{-- LEVEL 2: FINANCE APPROVAL --}}
-            @if($batch->status == 'L1_Approved')
+            {{-- LEVEL 2: FINANCE APPROVAL (Only visible to Finance when L1 is Approved) --}}
+            @if(auth()->user()->role === 'Finance' && $batch->status == 'L1_Approved')
             <form action="{{ route('admin.payroll.approve_l2', $batch->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Confirm L2 Approval? This authorizes the payout.');">
                 @csrf
-                <button class="btn btn-primary">
-                    <i class="bi bi-shield-lock"></i> Level 2 Approval (Finance)
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-shield-lock"></i> Finance Approval (L2)
                 </button>
             </form>
             @endif
 
-            {{-- REJECT / SEND BACK TO DRAFT (Visible during Review Phases) --}}
-            @if($batch->status == 'L1_Approved' || $batch->status == 'L2_Approved')
+            {{-- REJECT / UNLOCK (Visible to Finance to send back to HR) --}}
+            @if(auth()->user()->role === 'Finance' && $batch->status == 'L1_Approved')
             <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
                 <i class="bi bi-arrow-counterclockwise"></i> Reject & Unlock
             </button>
             @endif
 
-            {{-- STEP 6: DISBURSEMENT --}}
-            @if($batch->status == 'L2_Approved')
+            {{-- DISBURSEMENT (Visible to Finance after final approval) --}}
+            @if(auth()->user()->role === 'Finance' && $batch->status == 'L2_Approved')
             <a href="{{ route('admin.payroll.export', $batch->id) }}" class="btn btn-danger" onclick="return confirm('Download Final Report? This will mark the batch as PAID.');">
-                <i class="bi bi-file-earmark-pdf"></i> Download Payment Report (PDF) & Mark Paid
+                <i class="bi bi-file-earmark-pdf"></i> Download & Mark Paid
             </a>
             @endif
 
+            {{-- VIEW ONLY (Re-download) --}}
             @if($batch->status == 'Paid')
             <a href="{{ route('admin.payroll.export', $batch->id) }}" class="btn btn-secondary">
                 <i class="bi bi-file-earmark-pdf"></i> Re-Download Report
