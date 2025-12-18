@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PayrollSettingController;
 use App\Http\Controllers\Admin\ClaimController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\LeaveController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +42,10 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/admin/attendance/{id}/update', [AttendanceController::class, 'update'])->name('admin.attendance.update');
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
     Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
+    Route::get('/admin/leave', [LeaveController::class, 'adminIndex'])->name('leave.index');
+    
+    // Use PATCH for state updates to comply with Data Protection [138]
+    Route::patch('/admin/leave/{id}/update', [LeaveController::class, 'adminUpdate'])->name('leave.update');
 
     // --- Staff Payslip View ---
     // Moved here so non-admin staff can access their own history
@@ -126,6 +131,11 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
     Route::get('/claims/create', [App\Http\Controllers\Admin\ClaimController::class, 'create'])->name('claims.create');
     Route::post('/claims/store', [App\Http\Controllers\Admin\ClaimController::class, 'store'])->name('claims.store');
     Route::get('/claims/history', [App\Http\Controllers\Admin\ClaimController::class, 'index'])->name('claims.index');
+    // Page to view and apply for leave
+    Route::get('/leave', [LeaveController::class, 'staffIndex'])->name('leave.index');
+    
+    // Action to save the leave request
+    Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
 });
 
 /*
@@ -137,4 +147,36 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
 Route::post('/_sidebar/toggle', function (\Illuminate\Http\Request $request) {
     session(['sidebar_collapsed' => (bool) $request->input('collapsed')]);
     return response()->json(['ok' => true]);
+});
+
+
+
+
+/*
+|--------------------------------------------------------------------------
+| training
+|--------------------------------------------------------------------------
+*/
+
+
+use App\Http\Controllers\Admin\TrainingController;
+
+Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(function () {
+    
+    
+    Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
+    Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
+    Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
+    Route::get('/training/create/new', [TrainingController::class, 'create'])->name('training.create');
+    Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
+    Route::delete('/training/{id}', [TrainingController::class, 'destroy'])->name('training.destroy');
+    Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
+    Route::post('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assign'])->name('training.assign');
+    Route::get('/training/{id}/edit', [TrainingController::class, 'edit'])->name('training.edit');
+    Route::put('/training/{id}', [TrainingController::class, 'update'])->name('training.update');
+    Route::match(['get', 'post'], '/training/records', [App\Http\Controllers\Admin\TrainingController::class, 'records'])->name('training.records');
+    Route::post('/training/{id}/user/{userId}/status', [TrainingController::class, 'updateStatus'])->name('training.status');
+    Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
+    Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])
+     ->name('training.updateStatus');
 });

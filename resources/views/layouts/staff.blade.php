@@ -132,6 +132,12 @@
             </span>
             @endif
           </a>
+        <li class="nav-item">
+            <a href="{{ route('staff.leave.index') }}" 
+              class="nav-link d-flex align-items-center {{ request()->routeIs('staff.leave.*') ? 'active' : '' }}">
+                <i class="bi bi-calendar-plus me-2"></i>
+                <p class="mb-0">Request Leave</p>
+            </a>
         </li>
       </aside>
 
