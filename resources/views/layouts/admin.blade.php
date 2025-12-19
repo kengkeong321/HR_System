@@ -157,6 +157,19 @@
           </li>
 
           <li class="nav-item">
+          <a class="nav-link d-flex align-items-center {{ request()->routeIs('training.*') ? 'active' : '' }}" href="{{ route('training.index') }}">
+          <i class="bi bi-mortarboard me-2"></i>
+          <span class="label">Training & Dev</span>
+          </a>
+          </li>
+          <li class="nav-item">
+    <a class="nav-link d-flex align-items-center {{ request()->routeIs('training.records') ? 'active' : '' }}" href="{{ route('training.records') }}">
+        <i class="bi bi-person-badge me-2"></i>
+        <span class="label">Staff Records</span>
+    </a>
+</li>
+
+          <li class="nav-item">
             <a class="nav-link d-flex align-items-center" href="{{ route('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i><span class="label">Dashboard</span></a>
           </li>
 
