@@ -58,6 +58,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Individual PDF Download (Reuse Admin Controller Export)
     Route::get('/payroll/export-slip/{id}', [PayrollController::class, 'exportSlip'])->name('admin.payroll.export_slip');
+
+    
 });
 
 /*
@@ -98,9 +100,10 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::prefix('payroll')->name('payroll.')->group(function () {
         Route::get('/settings', [PayrollSettingController::class, 'index'])->name('settings.index');
         Route::post('/settings/update', [PayrollSettingController::class, 'update'])->name('settings.update');
+        
     });
     Route::resource('payroll', PayrollController::class)->except(['show', 'create', 'store']);
-    
+
 
     /*
     |--------------------------------------------------------------------------

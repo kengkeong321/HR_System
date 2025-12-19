@@ -7,9 +7,11 @@ use App\Models\Payroll;
 use App\Models\Claim;
 use App\Models\PayrollBatch;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Business\Strategies\EPFStrategy;
 use App\Business\Strategies\SocsoTableStrategy;
 use App\Business\Strategies\Contracts\SalaryComponentInterface;
+use Illuminate\Support\Facades\Http;
 
 class PayrollService
 {
@@ -37,77 +39,94 @@ class PayrollService
     }
     
 
-public function calculateAndSavePayroll(Staff $staff, int $month, int $year, int $batchId, array $manualInputs = [])
-    {
-        // 1. Fetch Dynamic Configuration from payroll_configs table
-        $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
-        
-        // Use column data: staff_epf_rate (12.0) and eis_rate (0.2)
-        $staffEpfRate = (float) ($configs['staff_epf_rate'] ?? 11.0) / 100;
-        $eisRate = (float) ($configs['eis_rate'] ?? 0.2) / 100;
-        $socsoCeiling = (float) ($configs['socso_ceiling'] ?? 6000.0);
+    public function calculateAndSavePayroll(Staff $staff, int $month, int $year, int $batchId, array $manualInputs = [])
+{
+    // 1. Fetch Dynamic Configuration from payroll_configs table
+    $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
+    
+    $staffEpfRate = (float) ($configs['staff_epf_rate'] ?? 11.0) / 100;
+    $eisRate = (float) ($configs['eis_rate'] ?? 0.2) / 100;
+    $socsoCeiling = (float) ($configs['socso_ceiling'] ?? 6000.0);
 
-        // 2. Base Components from table columns / inputs
+  $isPartTime = ($staff->employment_type === 'Part-Time');
+    $hourlyRate = 50.00; 
+
+    if ($isPartTime) {
+        // Step 1: Direct DB Query to sum hours for User 6
+        $totalHours = DB::table('attendances')
+            ->where('user_id', $staff->user_id) // Ensures we target User 6
+            ->whereYear('attendance_date', $year)
+            ->whereMonth('attendance_date', $month)
+            ->whereIn('status', ['Present', 'Late']) // Include Late to be safe
+            ->whereNotNull('clock_out_time')
+            ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, clock_in_time, clock_out_time)) / 3600 as total_hours')
+            ->value('total_hours') ?? 0;
+
+        // Step 2: Calculate Basic Salary
+        $basic = $totalHours * $hourlyRate;
+    } else {
         $basic = (float) ($manualInputs['basic_salary'] ?? $staff->basic_salary);
-        $totalAllowances = (float) ($manualInputs['total_allowances'] ?? 0);
-        
-        // Use the new manual_deduction column data
-        $manualDeduction = (float) ($manualInputs['manual_deduction'] ?? 0);
-
-        // 3. Dynamic Statutory Calculations
-        if ($basic > 0) {
-            // Employee EPF based on 12% from table
-            $epfEmployee = $basic * $staffEpfRate;
-            
-            // SOCSO/EIS capped by dynamic ceiling
-            $salaryForStatutory = min($basic, $socsoCeiling);
-            
-            $socsoEmployee = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employee']);
-            $eisEmployee = $salaryForStatutory * $eisRate;
-
-            // Employer EPF based on low/high threshold from table
-            $threshold = (float) ($configs['employer_epf_threshold'] ?? 5000.0);
-            $employerRateKey = $basic <= $threshold ? 'employer_epf_rate_low' : 'employer_epf_rate_high';
-            $employerEpfRate = (float) ($configs[$employerRateKey] ?? 13.0) / 100;
-            
-            $epfEmployer = $basic * $employerEpfRate;
-            $socsoEmployer = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employer']);
-            $eisEmployer = $salaryForStatutory * $eisRate;
-        } else {
-            $epfEmployee = $epfEmployer = $socsoEmployee = $socsoEmployer = $eisEmployee = $eisEmployer = 0;
-        }
-
-        // 4. Final Math
-        $totalDeductions = $epfEmployee + $socsoEmployee + $eisEmployee + $manualDeduction;
-        $netSalary = ($basic + $totalAllowances) - $totalDeductions;
-
-        // 5. Save everything back to the payrolls table columns
-        return Payroll::updateOrCreate(
-            ['staff_id' => $staff->staff_id, 'month' => $month, 'year' => $year],
-            [
-                'batch_id' => $batchId,
-                'basic_salary' => round($basic, 2),
-                'allowances' => round($totalAllowances, 2),
-                'deduction' => round($totalDeductions, 2),
-                'manual_deduction' => round($manualDeduction, 2), // Maps to your new column
-                'net_salary' => round($netSalary, 2),
-                'status' => 'Draft',
-                'breakdown' => [
-                    'calculated_amounts' => [
-                        'epf_employee_rm' => round($epfEmployee, 2),
-                        'epf_employer_rm' => round($epfEmployer, 2),
-                        'socso_employee_rm' => round($socsoEmployee, 2),
-                        'socso_employer_rm' => round($socsoEmployer, 2),
-                        'eis_employee_rm' => round($eisEmployee, 2),
-                        'eis_employer_rm' => round($eisEmployer, 2),
-                    ]
-                ],
-                'allowance_remark' => $manualInputs['allowance_remark'] ?? null,
-                'deduction_remark' => $manualInputs['deduction_remark'] ?? null,
-            ]
-        );
     }
 
+    // 3. Process Allowances and Manual Deductions
+    $totalAllowances = (float) ($manualInputs['total_allowances'] ?? 0);
+    $manualDeduction = (float) ($manualInputs['manual_deduction'] ?? 0);
+
+    // 4. Dynamic Statutory Calculations
+    if ($basic > 0) {
+        // Employee EPF (e.g., 12% of basic)
+        $epfEmployee = $basic * $staffEpfRate;
+        
+        // SOCSO/EIS capped by dynamic ceiling
+        $salaryForStatutory = min($basic, $socsoCeiling);
+        
+        $socsoEmployee = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employee']);
+        $eisEmployee = $salaryForStatutory * $eisRate;
+
+        // Employer Portions
+        $threshold = (float) ($configs['employer_epf_threshold'] ?? 5000.0);
+        $employerRateKey = $basic <= $threshold ? 'employer_epf_rate_low' : 'employer_epf_rate_high';
+        $employerEpfRate = (float) ($configs[$employerRateKey] ?? 13.0) / 100;
+        
+        $epfEmployer = $basic * $employerEpfRate;
+        $socsoEmployer = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employer']);
+        $eisEmployer = $salaryForStatutory * $eisRate;
+    } else {
+        $epfEmployee = $epfEmployer = $socsoEmployee = $socsoEmployer = $eisEmployee = $eisEmployer = 0;
+    }
+
+    // 5. Final Calculations
+    $totalDeductions = $epfEmployee + $socsoEmployee + $eisEmployee + $manualDeduction;
+    $netSalary = ($basic + $totalAllowances) - $totalDeductions;
+
+    // 6. Save to Payrolls Table
+    return Payroll::updateOrCreate(
+        ['staff_id' => $staff->staff_id, 'month' => $month, 'year' => $year],
+        [
+            'batch_id' => $batchId,
+            'basic_salary' => round($basic, 2),
+            'allowances' => round($totalAllowances, 2),
+            'deduction' => round($totalDeductions, 2),
+            'manual_deduction' => round($manualDeduction, 2),
+            'net_salary' => round($netSalary, 2),
+            'status' => 'Draft',
+            'breakdown' => [
+                'calculated_amounts' => [
+                    'hours_worked' => $isPartTime ? round($totalHours, 2) : null,
+                    'hourly_rate' => $isPartTime ? $hourlyRate : null,
+                    'epf_employee_rm' => round($epfEmployee, 2),
+                    'epf_employer_rm' => round($epfEmployer, 2),
+                    'socso_employee_rm' => round($socsoEmployee, 2),
+                    'socso_employer_rm' => round($socsoEmployer, 2),
+                    'eis_employee_rm' => round($eisEmployee, 2),
+                    'eis_employer_rm' => round($eisEmployer, 2),
+                ]
+            ],
+            'allowance_remark' => $manualInputs['allowance_remark'] ?? ($isPartTime ? "API Sync: " . round($totalHours, 2) . " hrs @ RM50" : null),
+            'deduction_remark' => $manualInputs['deduction_remark'] ?? null,
+        ]
+    );
+}
    public function updateBatchTotals($batchId)
     {
         $freshTotals = Payroll::where('batch_id', $batchId)

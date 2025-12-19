@@ -184,6 +184,14 @@ class PayrollController extends Controller
             ->where('status', 'Present')
             ->count();
 
+        $totalHours = DB::table('attendances')
+            ->where('user_id', $payroll->staff->user_id)
+            ->whereYear('attendance_date', $payroll->year)
+            ->whereMonth('attendance_date', (int)$payroll->month)
+            ->where('status', 'Present')
+            ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, clock_in_time, clock_out_time)) / 3600 as hours')
+            ->value('hours') ?? 0;
+
         $allowanceCategories = DB::table('payroll_categories')->where('type', 'Allowance')->get();
         $deductionCategories = DB::table('payroll_categories')->where('type', 'Deduction')->get();
 
@@ -193,7 +201,8 @@ class PayrollController extends Controller
             'daysPresent', 
             'allowanceCategories', 
             'deductionCategories', 
-            'manualAmount'
+            'manualAmount',
+            'totalHours'
         ));
     }
 
@@ -380,5 +389,7 @@ class PayrollController extends Controller
             'eis_total'        => $eis,
         ];
     }
+
+    
     
 }
