@@ -188,17 +188,27 @@
 
           <li class="nav-item {{ Request::is('admin/payroll/settings*') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('admin.payroll.settings.index') }}">
-              <i class="bi bi-gear-fill"></i>
+              <i class="bi bi-gear-fill me-2" style="width: 20px; text-align: center;"></i>
               <span>Payroll Settings</span>
             </a>
           </li>
 
-          <li class="nav-item"> <a href="{{ route('admin.payroll.index') }}"
+          <li class="nav-item">
+            <a href="{{ route('admin.payroll.index') }}"
               class="nav-link {{ request()->routeIs('admin.payroll.*') ? 'active' : '' }} d-flex align-items-center">
               <i class="bi bi-cash-stack me-2" style="width: 20px; text-align: center;"></i>
               <span class="label">Payroll Management</span>
             </a>
           </li>
+
+          <li class="nav-item">
+            <a href="{{ route('admin.claims.index') }}"
+              class="nav-link {{ request()->routeIs('admin.claims.*') ? 'active' : '' }} d-flex align-items-center">
+              <i class="bi bi-file-earmark-check me-2" style="width: 20px; text-align: center;"></i>
+              <span class="label">Claims Verification</span>
+            </a>
+          </li>
+
         </ul>
 
 
@@ -206,13 +216,13 @@
           <div class="nav-header text-muted small text-uppercase mt-3 mb-1 ml-3" style="font-size: 0.75rem; letter-spacing: 0.5px;">
             LEAVE APPROVAL
           </div>
-            <li class="nav-item">
-                <a href="{{ route('leave.index') }}" 
-                  class="nav-link d-flex align-items-center {{ request()->routeIs('admin.leave.*') ? 'active' : '' }}"
-                  style=""> <i class="bi bi-calendar2-check me-2" style="width: 20px; text-align: center;"></i>
-                    <span class="label">Leave Requests</span>
-                </a>
-            </li>
+          <li class="nav-item">
+            <a href="{{ route('leave.index') }}"
+              class="nav-link d-flex align-items-center {{ request()->routeIs('admin.leave.*') ? 'active' : '' }}"
+              style="margin-left: -2%;"> <i class="bi bi-calendar2-check me-2" style="width: 20px; text-align: center;"></i>
+              <span class="label">Leave Requests</span>
+            </a>
+          </li>
         </ul>
 
 
@@ -338,8 +348,9 @@
       });
     })();
   </script>
-    <script src="{{ asset('js/app.js') }}"></script>
+  <script src="{{ asset('js/app.js') }}"></script>
 
-    @stack('scripts')
+  @stack('scripts')
 </body>
+
 </html>
