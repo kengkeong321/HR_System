@@ -158,56 +158,39 @@ class AttendanceController extends Controller
 
     public function staffStore(Request $request)
     {
-        $userId = session('user_id');
+        // Access Control [89]: Use session to ensure staff only mark their own attendance
+        $userId = session('user_id'); 
         $today = now()->toDateString();
-        $currentTime = now()->toTimeString(); // Captures current time, e.g., "09:15:00"
+        $currentTime = now()->toTimeString();
         $action = $request->input('action_type');
 
-        // 1. Find if a record exists for today to prevent duplicates
+        // 1. Prevent Duplicates: Check if a record exists for today
         $record = \App\Models\Attendance::where('user_id', $userId)
             ->where('attendance_date', $today)
             ->first();
 
+        // LOGIC FOR CLOCK IN
         if ($action == 'in') {
             if ($record) {
                 return back()->with('error', 'You have already clocked in today!');
             }
 
-            // 2. Fetch the Standard Work Start Time from your settings table
-            $startTimeSetting = DB::table('settings')
-                ->where('key_name', 'work_start_time')
-                ->value('key_value');
-
-            // Fallback default if setting is missing to prevent errors
-            if (!$startTimeSetting) {
-                $startTimeSetting = '09:00:00';
-            }
-
-            // 3. Automated Logic: Compare current time to start time
-            // If currentTime is LATER than startTimeSetting, status becomes 'Late'
-            $status = (strtotime($currentTime) > strtotime($startTimeSetting)) ? 'Late' : 'Present';
-
+            /** * OBSERVER PATTERN IMPLEMENTATION:
+             * We save the status as 'Present' by default. 
+             * Once 'create' is called, the AttendanceObserver will automatically 
+             * check the time and update the status to 'Late' if necessary.
+             */
             \App\Models\Attendance::create([
                 'user_id' => $userId,
                 'attendance_date' => $today,
                 'clock_in_time' => $currentTime,
-                'status' => $status, // Dynamic status based on logic
-                'remarks' => ($status === 'Late') ? 'Auto-marked: Late arrival' : null
+                'status' => 'Present', // The Observer will override this if late
             ]);
 
-            $message = ($status === 'Late') 
-                ? 'Clock-in recorded. You are marked as Late.' 
-                : 'Clock-in successful! Have a great day.';
-
-            if ($status === 'Late') {
-                // Send a warning instead of success for late users
-                return back()->with('warning', 'Clock-in recorded. You are marked as Late!');
-            }
-
-            return back()->with('success', $message);
-            
+            return back()->with('success', 'Clock-in recorded successfully!');
         }
 
+        // LOGIC FOR CLOCK OUT
         if ($action == 'out') {
             if (!$record) {
                 return back()->with('error', 'No clock-in record found. Please clock in first!');
@@ -217,12 +200,12 @@ class AttendanceController extends Controller
                 return back()->with('error', 'You have already clocked out today!');
             }
 
+            // Data Protection [138]: Updating via server-side logic, not URL parameters
             $record->update([
                 'clock_out_time' => $currentTime
             ]);
 
             return back()->with('success', 'Clock-out successful! See you tomorrow.');
         }
-        
     }
 }

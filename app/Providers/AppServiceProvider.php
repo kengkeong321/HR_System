@@ -50,5 +50,6 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(\App\Models\Payroll::class, \App\Policies\PayrollPolicy::class);
+        \App\Models\Attendance::observe(\App\Observers\AttendanceObserver::class);
     }
 }

@@ -103,6 +103,15 @@
             </a>
           </li>
 
+          <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3">Time Off</li>
+
+          <li class="nav-item">
+              <a href="{{ route('staff.leave.index') }}" class="nav-link d-flex align-items-center {{ request()->routeIs('staff.leave.*') ? 'active' : '' }}">
+                  <i class="bi bi-calendar-event me-2"></i>
+                  <span class="label">Leave Request</span>
+              </a>
+          </li>
+
           <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3 label" style="font-size: 0.75rem; letter-spacing: 0.5px;">
              Financials
           </li>
