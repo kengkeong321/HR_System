@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Admin;
-
+use App\Models\TrainingProgram;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Facades\Training; 
@@ -89,25 +89,27 @@ class TrainingController extends Controller
 public function destroy($id)
 {
     try {
+      
         Training::deleteTraining($id);
         return redirect()->route('training.index')->with('success', 'Training program deleted successfully.');
     } catch (\Exception $e) {
+       
         return redirect()->back()->with('error', $e->getMessage());
     }
 }
 
 
 
-public function activate($id)
-{
-    try {
-        Training::activateTraining($id);
-        return redirect()->back()->with('success', 'Training program has been re-activated!');
-    } catch (\Exception $e) {
-        return redirect()->back()->with('error', 'Failed to activate training.');
-    }
-}
 
+
+public function activate(Request $request, $id) {
+  
+    $program = TrainingProgram::findOrFail($id);
+    $program->status = ($program->status === 'Active') ? 'Inactive' : 'Active';
+    $program->save();
+
+    return back()->with('success', 'Status updated!');
+}
        //===========================================================================================
 
     public function edit($id) {
@@ -131,19 +133,17 @@ public function activate($id)
 
 public function records(Request $request)
 {
-   
+
     $staffList = Training::getAllStaffForRecords();
 
     $selectedUser = null;
     if ($request->filled('user_id')) {
-    
+  
         $selectedUser = Training::getStaffTrainingHistory($request->user_id);
     }
 
     return view('admin.training.records', compact('staffList', 'selectedUser'));
 }
-
-
 
        //===========================================================================================
 
