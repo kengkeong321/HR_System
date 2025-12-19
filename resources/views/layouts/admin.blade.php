@@ -257,6 +257,15 @@
           </li>
         </ul>
 
+        <ul class="nav flex-column ms-0 p-0" style="list-style: none;">
+          <li class="nav-item">
+              <a href="{{ route('admin.attendance.test_api') }}" class="nav-link">
+                  <i class="bi bi-cpu me-2"></i>
+                  <span>API Connection Test</span>
+              </a>
+          </li>
+        </ul>
+
       </aside>
 
       <main class="col-md-9 col-lg-10 p-4">

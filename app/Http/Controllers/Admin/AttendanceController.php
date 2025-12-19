@@ -8,32 +8,51 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Attendance;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 class AttendanceController extends Controller
 {
 
-    public function index(Request $request)
-    {
-        // 1. Initialize query with user relationship
-        $query = Attendance::with('user');
+// Add these at the very top of your file
 
-        // 2. Filter by User ID (passed from the 'Verify' link in Payroll)
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
 
-        // 3. Filter by Month (passed from Payroll, e.g., 'June')
-        if ($request->has('month')) {
-            // Convert month name to number (e.g., 'June' becomes 6)
-            $monthNumber = date('m', strtotime($request->month));
-            $query->whereMonth('attendance_date', $monthNumber);
-        }
+// Update your index method
+public function index(Request $request)
+{
+    // 1. Optimized Eager Loading (reduces database hits)
+    $query = \App\Models\Attendance::with('user');
 
-        // 4. Fetch the results (keeping your original ordering)
-        $attendances = $query->orderBy('attendance_date', 'desc')->get();
-
-        return view('admin.attendance.index', compact('attendances'));
+    if ($request->has('user_id')) {
+        $query->where('user_id', $request->user_id);
     }
+
+    $attendances = $query->orderBy('attendance_date', 'desc')->get();
+
+    // 2. Optimized Service Consumption with Cache
+    // This stores the position names for 10 minutes so it doesn't call the API every time
+    $posMap = Cache::remember('positions_map', 600, function () {
+        try {
+            // Set a 3-second timeout so the page doesn't hang forever
+            $response = Http::timeout(3)->get(url('/api/positions'), [
+                'requestID' => 'REQ-' . time(),
+                'timeStamp' => now()->format('Y-m-d H:i:s')
+            ]);
+
+            if ($response->successful()) {
+                $json = $response->json();
+                if (isset($json['status']) && $json['status'] === 'ok') {
+                    return collect($json['data'])->pluck('name', 'position_id')->toArray();
+                }
+            }
+        } catch (\Exception $e) {
+            return []; // Return empty if teammate's API is down
+        }
+        return [];
+    });
+
+    return view('admin.attendance.index', compact('attendances', 'posMap'));
+}
 
     public function create(Request $request)
     {
@@ -206,6 +225,32 @@ class AttendanceController extends Controller
             ]);
 
             return back()->with('success', 'Clock-out successful! See you tomorrow.');
+        }
+    }
+
+    public function getPositionsFromTeammate()
+    {
+        // Mandatory Parameters for tracking
+        $requestId = 'REQ-' . time();
+        $timestamp = now()->format('Y-m-d H:i:s');
+
+        try {
+            // Consuming the web service provided by your teammate
+            $response = Http::get(url('/api/positions'), [
+                'requestID' => $requestId,
+                'timeStamp' => $timestamp
+            ]);
+
+            if ($response->successful()) {
+                $json = $response->json();
+                // Validate the status field as per IFA agreement
+                if ($json['status'] === 'ok') {
+                    return $json['data']; 
+                }
+            }
+            return [];
+        } catch (\Exception $e) {
+            return [];
         }
     }
 }

@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\LeaveController;
 use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\Staff\StaffClaimController;
+use App\Models\Attendance;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,11 +74,11 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     // --- User Management (Admin only) ---
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class)
         ->except(['show', 'destroy'])
-        ->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+        ->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 
     Route::patch('users/{user}/status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])
         ->name('users.toggleStatus')
-        ->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+        ->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 
     /*
     |--------------------------------------------------------------------------
@@ -140,7 +142,7 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::post('faculties/page', [\App\Http\Controllers\Admin\FacultyController::class, 'page'])->name('faculties.page');
     Route::post('departments/page', [\App\Http\Controllers\Admin\DepartmentController::class, 'page'])->name('departments.page');
     Route::post('courses/page', [\App\Http\Controllers\Admin\CourseController::class, 'page'])->name('courses.page');
-    Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+    Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 
 
 });
@@ -197,7 +199,7 @@ Route::post('/_sidebar/toggle', function (\Illuminate\Http\Request $request) {
 
 use App\Http\Controllers\Admin\TrainingController;
 
-Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(function () {
+Route::middleware(['auth'])->group(function () {
     
     //(Static Routes) ---
     Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
@@ -233,6 +235,12 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeedback'])
          ->name('staff.feedback.store');
 
+         
+});
 
-
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])->group(function () {
+    // This is the specific route the sidebar is looking for
+    Route::get('/admin/attendance/test-api', function () {
+        return view('admin.attendance.api_test');
+    })->name('admin.attendance.test_api');
 });
