@@ -45,7 +45,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/admin/settings', [SettingController::class, 'index'])->name('admin.settings.index');
     Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
     Route::get('/admin/leave', [LeaveController::class, 'adminIndex'])->name('leave.index');
-    
+
     // Use PATCH for state updates to comply with Data Protection [138]
     Route::patch('/admin/leave/{id}/update', [LeaveController::class, 'adminUpdate'])->name('leave.update');
 
@@ -104,7 +104,7 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     |--------------------------------------------------------------------------
     */
     Route::prefix('claims')->name('claims.')->group(function () {
-        
+
         Route::get('/', [ClaimController::class, 'index'])->name('index');
 
         Route::post('/{id}/approve', [ClaimController::class, 'approve'])->name('approve');
@@ -131,9 +131,9 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
 });
 
 
-// Staff specific routes
+// Staff routes
 Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
-    
+
     Route::get('/dashboard', function () {
         return view('staff.dashboard');
     })->name('dashboard');
@@ -141,7 +141,7 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
     // Attendance
     Route::get('/attendance', [AttendanceController::class, 'staffCreate'])->name('attendance.create');
     Route::post('/attendance/store', [AttendanceController::class, 'staffStore'])->name('attendance.store');
-    
+
     // payslip
     Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
     Route::get('/payroll/{id}/export', [PayrollController::class, 'exportSlip'])->name('payroll.export');
@@ -149,12 +149,12 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
     // leave
     Route::get('/leave', [LeaveController::class, 'staffIndex'])->name('leave.index');
     Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
-    
+
     // claims
     Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
     Route::post('/claims/store', [ClaimController::class, 'store'])->name('claims.store');
-    
-    Route::get('/my-claims', [StaffClaimController::class, 'myHistory'])->name('claims.index');
+
+    Route::get('/claims/history', [StaffClaimController::class, 'index'])->name('claims.index');
 });
 
 /*
@@ -181,8 +181,8 @@ Route::post('/_sidebar/toggle', function (\Illuminate\Http\Request $request) {
 use App\Http\Controllers\Admin\TrainingController;
 
 Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(function () {
-    
-    
+
+
     Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
     Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
     Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
@@ -197,5 +197,5 @@ Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(funct
     Route::post('/training/{id}/user/{userId}/status', [TrainingController::class, 'updateStatus'])->name('training.status');
     Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
     Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])
-     ->name('training.updateStatus');
+        ->name('training.updateStatus');
 });

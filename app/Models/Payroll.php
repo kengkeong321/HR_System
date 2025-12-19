@@ -10,11 +10,8 @@ class Payroll extends Model
     use HasFactory;
 
     protected $table = 'payrolls'; 
-
-    // 2. Primary Key
     protected $primaryKey = 'id';
 
-    // 3. ALLOWED FIELDS 
     protected $fillable = [
         'batch_id',       
         'staff_id',
@@ -33,6 +30,11 @@ class Payroll extends Model
     protected $casts = [
         'breakdown' => 'array',
     ];
+
+    public function batch()
+    {
+        return $this->belongsTo(PayrollBatch::class, 'batch_id', 'id');
+    }
 
     public function staff()
     {

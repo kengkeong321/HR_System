@@ -88,7 +88,7 @@
           </li>
 
           <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3">Attendance</li>
-          
+
           <li class="nav-item">
             <a href="{{ route('staff.attendance.create') }}" class="nav-link d-flex align-items-center {{ request()->routeIs('staff.attendance.*') ? 'active' : '' }}">
               <i class="fas fa-user-clock me-2" style="width: 20px;"></i>
@@ -97,7 +97,7 @@
           </li>
 
           <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3 label" style="font-size: 0.75rem; letter-spacing: 0.5px;">
-             Financials
+            Financials
           </li>
 
           <li class="nav-item">
@@ -118,17 +118,16 @@
             <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.claims.index') ? 'active' : '' }}" href="{{ route('staff.claims.index') }}">
               <i class="bi bi-list-check me-2"></i>
               <span class="label">My Claims Status</span>
-              
-              {{-- Rejection Badge --}}
+
               @if(isset($sidebarRejectionCount) && $sidebarRejectionCount > 0)
-              <span class="badge rounded-pill bg-danger ms-auto">
+              <span class="badge rounded-pill bg-danger ms-auto shadow-sm">
                 {{ $sidebarRejectionCount }}
               </span>
               @endif
             </a>
           </li>
-        </ul> 
-        </aside>
+        </ul>
+      </aside>
 
       <main class="col p-4">
         @yield('content')

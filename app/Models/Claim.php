@@ -19,16 +19,17 @@ class Claim extends Model
         'rejection_reason',
         'approved_by',
         'approved_at',
-        'rejected_by'
+        'rejected_by',
+        'is_seen',
     ];
 
-    // Relationship to Staff
+    // relationship to staff
     public function staff()
     {
         return $this->belongsTo(Staff::class, 'staff_id', 'staff_id');
     }
 
-    // Relationship to Approver (HR User)
+    // relationship to HR(approver)
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');

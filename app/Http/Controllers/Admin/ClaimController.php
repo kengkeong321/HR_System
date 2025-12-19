@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use App\Models\Claim;
 use App\Models\Payroll;
 use App\Models\Staff;
@@ -16,9 +17,10 @@ class ClaimController extends Controller
     public function index(Request $request)
     {
         $status = $request->get('status', 'Pending');
-
-        $claims = Claim::with('staff.user')
-            ->where('status', $status)
+        $claims = Claim::with(['staff.user', 'staff.department'])
+            ->when($status, function ($q) use ($status) {
+                return $q->where('status', $status);
+            })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -35,20 +37,24 @@ class ClaimController extends Controller
 
     public function create()
     {
-        return view('staff.claims.create');
+        $categories = \App\Models\ClaimCategory::where('status', 'Active')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return view('staff.claims.create', compact('categories'));
     }
 
-    // 2. Process the form submission
+    // process  form submission
     public function store(Request $request)
     {
         $request->validate([
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:1',
-            'receipt' => 'nullable|file|mimes:jpeg,png,pdf|max:2048', 
+            'receipt' => 'nullable|file|mimes:jpeg,png,pdf|max:2048',
         ]);
 
-       $userId = Auth::id();
-            $staff = Staff::where('user_id', $userId)->first();
+        $userId = Auth::id();
+        $staff = Staff::where('user_id', $userId)->first();
 
         $path = null;
         if ($request->hasFile('receipt')) {
@@ -61,7 +67,7 @@ class ClaimController extends Controller
             'description' => $request->description,
             'amount' => $request->amount,
             'receipt_path' => $path,
-            'status' => 'Pending', 
+            'status' => 'Pending',
         ]);
 
         return redirect()->route('staff.claims.index')->with('success', 'Claim submitted successfully!');
@@ -79,70 +85,72 @@ class ClaimController extends Controller
         return view('staff.claims.index', compact('claims'));
     }
 
-    public function approve($id)
+    public function approve(Request $request, $id)
     {
-        if (Auth::user()->role !== 'HR') {
-            return back()->with('error', 'Unauthorized: Only HR can approve claims.');
-        }
-
         try {
             DB::beginTransaction();
 
             $claim = Claim::findOrFail($id);
+            $approvedAmount = $request->input('approved_amount', $claim->amount);
 
             if ($claim->status !== 'Pending') {
-                return back()->with('error', 'Claim is not pending.');
+                return back()->with('error', 'Claim is not in a pending state.');
             }
 
             $claim->update([
                 'status' => 'Approved',
-                'approved_by' => Auth::user()->id,
-                'approved_at' => now()
+                'amount' => $approvedAmount,
+                'approved_by' => Auth::user()->user_id,
+                'approved_at' => now(),
+                'is_seen' => 0,
+                'rejection_reason' => null,
             ]);
 
-            // Sync with Payroll
             $currentPayroll = Payroll::where('staff_id', $claim->staff_id)
                 ->whereHas('batch', fn($q) => $q->where('status', 'Draft'))
                 ->first();
 
             if ($currentPayroll) {
                 $newAllowance = $currentPayroll->allowances + $claim->amount;
-                $newRemark = $currentPayroll->allowance_remark . " | Claim #{$claim->id}: {$claim->description}";
+                $newRemark = trim($currentPayroll->allowance_remark . " | Claim #{$claim->id}: {$claim->description}", " | ");
+
+                $newNetSalary = ($currentPayroll->basic_salary + $newAllowance) - $currentPayroll->deduction;
 
                 $currentPayroll->update([
-                    'allowances' => $newAllowance,
-                    'allowance_remark' => ltrim($newRemark, ' | '),
-                    'net_salary' => ($currentPayroll->basic_salary + $newAllowance) - ($currentPayroll->deduction + $this->getStatutoryTotal($currentPayroll))
+                    'allowances' => round($newAllowance, 2),
+                    'allowance_remark' => Str::limit($newRemark, 500),
+                    'net_salary' => round($newNetSalary, 2)
                 ]);
             }
 
             DB::commit();
-            return back()->with('success', 'Claim Approved.');
+            return back()->with('success', 'Claim Approved and Payroll updated.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Approval Error: " . $e->getMessage());
-            return back()->with('error', 'Error processing claim.');
+            return back()->with('error', 'Database Error: Could not process approval.');
         }
     }
 
     public function reject(Request $request, $id)
     {
-        // 1. MANUAL CHECK
-        if (Auth::user()->role !== 'HR') {
-            return back()->with('error', 'Unauthorized: Only HR can reject claims.');
-        }
+        $currentUser = Auth::user();
 
-        $request->validate(['rejection_reason' => 'required|string|max:255']);
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500'
+        ]);
 
         $claim = Claim::findOrFail($id);
 
         $claim->update([
             'status' => 'Rejected',
             'rejection_reason' => $request->rejection_reason,
-            'rejected_by' => Auth::user()->id
+            'rejected_by' => $currentUser->user_id,
+            'updated_at' => now()
         ]);
 
-        return back()->with('success', 'Claim rejected.');
+        return redirect()->route('admin.claims.index')
+            ->with('success', 'Claim has been rejected and staff notified.');
     }
 
     private function getStatutoryTotal($payroll)
