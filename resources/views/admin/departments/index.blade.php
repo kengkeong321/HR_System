@@ -51,8 +51,11 @@
         body.innerHTML = '<div class="text-center py-4">Loading…</div>';
         modalEl.querySelector('.modal-title').textContent = `Courses — ${name}`;
 
-        fetch(`/admin/departments/${id}/assignments`)
-          .then(r => r.json())
+        fetch(`/admin/departments/${id}/assignments`, { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+          .then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+          })
           .then(data => {
             const courses = data.courses;
             if (!courses || courses.length === 0) {
@@ -70,7 +73,7 @@
             modal.show();
           })
           .catch(err => {
-            body.innerHTML = `<div class="text-danger">Error loading assignments.</div>`;
+            body.innerHTML = `<div class="text-danger">Error loading assignments. ${err.message}</div>`;
             modal.show();
             console.error(err);
           });

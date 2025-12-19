@@ -115,15 +115,23 @@ class DepartmentController extends Controller
     // Return assigned courses for department (AJAX used by modal)
     public function assignments(string $department)
     {
-        $d = $this->depRepo->getWithCourses($department);
-        $courses = $d->courses->map(function($c) {
-            return ['course_id' => $c->course_id, 'course_name' => $c->course_name];
-        })->values();
+        try {
+            $d = $this->depRepo->getWithCourses($department);
+            $courses = $d->courses->map(function($c) {
+                return ['course_id' => $c->course_id, 'course_name' => $c->course_name];
+            })->values();
 
-        return response()->json([
-            'department' => ['depart_id' => $d->depart_id, 'depart_name' => $d->depart_name],
-            'courses' => $courses,
-        ]);
+            return response()->json([
+                'department' => ['depart_id' => $d->depart_id, 'depart_name' => $d->depart_name],
+                'courses' => $courses,
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['error' => 'Department not found'], 404);
+        } catch (\Throwable $e) {
+            // Log and return a friendly error message
+            logger()->error('Error fetching department assignments: '.$e->getMessage(), ['department' => $department]);
+            return response()->json(['error' => 'Unable to load assignments'], 500);
+        }
     }
 
     public function page(Request $request)

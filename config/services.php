@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    // API provider settings used to validate external clients
+    'api' => [
+        'key' => env('API_KEY', ''),
+    ],
+
 ];
