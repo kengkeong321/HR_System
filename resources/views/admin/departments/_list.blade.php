@@ -10,13 +10,14 @@
   </thead>
   <tbody>
     @foreach($departments as $d)
-    <tr>
+    <tr class="department-row" data-depart-id="{{ $d->depart_id }}" data-depart-name="{{ $d->depart_name }}" style="cursor:pointer">
       <td>{{ $d->depart_id }}</td>
       <td>{{ $d->depart_name }}</td>
-      <td>{{ $d->faculty?->faculty_name }}</td>
+      <td>{{ $d->faculty_id }}</td>
       <td><span class="badge bg-{{ $d->status === 'Active' ? 'success' : 'danger' }}">{{ $d->status }}</span></td>
       <td>
-        <a href="{{ route('admin.departments.edit', $d) }}" class="btn btn-sm btn-secondary">Edit</a>
+        <a href="{{ route('admin.departments.edit', $d) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit mr-1"></i> Edit</a>
+        <a href="{{ route('admin.departments.assign', $d) }}" class="btn btn-sm btn-outline-success"><i class="fas fa-plus mr-1"></i> Assign</a>
         <form action="{{ route('admin.departments.toggleStatus', $d) }}" method="POST" style="display:inline-block" onsubmit="return confirm('Change status?')">
           @csrf
           @method('PATCH')

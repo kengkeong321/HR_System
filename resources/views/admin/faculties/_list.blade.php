@@ -9,12 +9,12 @@
   </thead>
   <tbody>
     @foreach($faculties as $f)
-    <tr>
+    <tr class="faculty-row" data-faculty-id="{{ $f->faculty_id }}" data-faculty-name="{{ $f->faculty_name }}" style="cursor:pointer">
       <td>{{ $f->faculty_id }}</td>
       <td>{{ $f->faculty_name }}</td>
       <td><span class="badge bg-{{ $f->status === 'Active' ? 'success' : 'danger' }}">{{ $f->status }}</span></td>
       <td>
-        <a href="{{ route('admin.faculties.edit', $f) }}" class="btn btn-sm btn-secondary">Edit</a>
+        <a href="{{ route('admin.faculties.edit', $f) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit mr-1"></i> Edit</a>
         <form action="{{ route('admin.faculties.toggleStatus', $f) }}" method="POST" style="display:inline-block" onsubmit="return confirm('Change status?')">
           @csrf
           @method('PATCH')

@@ -149,6 +149,10 @@
           </li>
 
           <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" href="{{ route('admin.positions.index') }}"><i class="bi bi-person-badge me-2"></i><span class="label">Positions</span></a>
+          </li>
+
+          <li class="nav-item">
             <a class="nav-link d-flex align-items-center" href="{{ route('admin.departments.index') }}"><i class="bi bi-diagram-3 me-2"></i><span class="label">Departments</span></a>
           </li>
 

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsStaffOnly;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PayrollSettingController;
@@ -115,9 +116,21 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
 
     // --- Faculty, Department, Course CRUD ---
     Route::resource('faculties', \App\Http\Controllers\Admin\FacultyController::class)->except(['show', 'destroy']);
+    // Positions module
+    Route::resource('positions', \App\Http\Controllers\Admin\PositionController::class)->except(['show', 'destroy']);
+    Route::patch('positions/{position}/status', [\App\Http\Controllers\Admin\PositionController::class, 'toggleStatus'])->name('positions.toggleStatus');
+    Route::post('positions/page', [\App\Http\Controllers\Admin\PositionController::class, 'page'])->name('positions.page');
+
+    // AJAX: return active departments for a faculty (used by faculties index modal)
+    Route::get('faculties/{faculty}/departments', [\App\Http\Controllers\Admin\FacultyController::class, 'departments'])->name('faculties.departments');
     Route::patch('faculties/{faculty}/status', [\App\Http\Controllers\Admin\FacultyController::class, 'toggleStatus'])->name('faculties.toggleStatus');
 
     Route::resource('departments', \App\Http\Controllers\Admin\DepartmentController::class)->except(['show', 'destroy']);
+    // Assignment routes for departments (assign courses)
+    Route::get('departments/{department}/assign', [\App\Http\Controllers\Admin\DepartmentController::class, 'assign'])->name('departments.assign');
+    Route::post('departments/{department}/assign', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignStore'])->name('departments.assign.store');
+    // API for modal: get assigned courses for a department (used by the assignments modal)
+    Route::get('departments/{department}/assignments', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignments'])->name('departments.assignments');
     Route::patch('departments/{department}/status', [\App\Http\Controllers\Admin\DepartmentController::class, 'toggleStatus'])->name('departments.toggleStatus');
 
     Route::resource('courses', \App\Http\Controllers\Admin\CourseController::class)->except(['show', 'destroy']);
@@ -128,11 +141,15 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::post('departments/page', [\App\Http\Controllers\Admin\DepartmentController::class, 'page'])->name('departments.page');
     Route::post('courses/page', [\App\Http\Controllers\Admin\CourseController::class, 'page'])->name('courses.page');
     Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+
+
 });
 
+// Positions API (Active only) - returns active positions list for dropdowns
+Route::get('/api/positions', [\App\Http\Controllers\Api\PositionController::class, 'index'])->name('api.positions.index');
 
 // Staff specific routes
-Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
+Route::prefix('staff')->name('staff.')->middleware([\App\Http\Middleware\EnsureUserIsStaffOnly::class])->group(function () {
     
     Route::get('/dashboard', function () {
         return view('staff.dashboard');
@@ -159,7 +176,7 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
 
 /*
 |--------------------------------------------------------------------------
-| System Utilities
+| System Utilities 
 |--------------------------------------------------------------------------
 */
 

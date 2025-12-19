@@ -26,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
         return new \App\Services\StaffTrainingService();
     });
 
+    $this->app->bind(\App\Repositories\PositionRepositoryInterface::class, \App\Repositories\EloquentPositionRepository::class);
   
     }
 
