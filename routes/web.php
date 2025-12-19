@@ -183,20 +183,40 @@ use App\Http\Controllers\Admin\TrainingController;
 
 Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(function () {
     
-    
+    //(Static Routes) ---
     Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
-    Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
-    Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
     Route::get('/training/create/new', [TrainingController::class, 'create'])->name('training.create');
-    Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
-    Route::delete('/training/{id}', [TrainingController::class, 'destroy'])->name('training.destroy');
-    Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
-    Route::post('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assign'])->name('training.assign');
+    
+    
+    Route::get('/training/records', [TrainingController::class, 'records'])->name('training.records');
+    Route::post('/training/records', [TrainingController::class, 'records']);
+
+    //(Dynamic Routes) ---
+    Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
     Route::get('/training/{id}/edit', [TrainingController::class, 'edit'])->name('training.edit');
+    Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
+    
+    // (Actions) ---
+    Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
     Route::put('/training/{id}', [TrainingController::class, 'update'])->name('training.update');
-    Route::match(['get', 'post'], '/training/records', [App\Http\Controllers\Admin\TrainingController::class, 'records'])->name('training.records');
-    Route::post('/training/{id}/user/{userId}/status', [TrainingController::class, 'updateStatus'])->name('training.status');
+    Route::delete('/training/{id}', [TrainingController::class, 'destroy'])->name('training.destroy');
+    Route::post('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assign'])->name('training.assign');
+    Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
+    Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])->name('training.updateStatus');
     Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
-    Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])
-     ->name('training.updateStatus');
+    Route::post('/training/{id}/status-toggle', [TrainingController::class, 'activate'])->name('training.status.toggle');
+});
+
+use App\Http\Controllers\Staff\StaffTrainingController;
+
+Route::middleware(['auth'])->group(function () {
+   
+    Route::get('/staff/my-trainings', [StaffTrainingController::class, 'index'])
+         ->name('staff.trainings.index');
+
+Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeedback'])
+         ->name('staff.feedback.store');
+
+
+
 });

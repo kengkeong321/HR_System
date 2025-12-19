@@ -34,7 +34,14 @@
                     <tbody>
                         @forelse($trainings as $training)
                         <tr>
-                            <td class="align-middle font-weight-bold">{{ $training->title }}</td>
+                            <td class="align-middle font-weight-bold">
+                                {{ $training->title }}
+                                @if(isset($training->status) && $training->status === 'Ended')
+                                    <span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">Ended</span>
+                                @else
+                                    <span class="badge bg-success ms-2" style="font-size: 0.7rem;">Active</span>
+                                @endif
+                            </td>
                             <td class="align-middle">{{ $training->venue }}</td>
                             <td class="align-middle text-center small">{{ $training->start_time }}</td>
                             <td class="align-middle text-center small">{{ $training->end_time }}</td>
@@ -53,20 +60,37 @@
                             </td>
 
                             <td class="align-middle text-center">
-                             
-                                <a href="{{ route('training.show', $training->id) }}" class="btn btn-info btn-sm shadow-sm">
-                                    <i class="fas fa-eye"></i> View & Edit
+                               
+                                <a href="{{ route('training.show', $training->id) }}" class="btn btn-info btn-sm shadow-sm" title="View & Edit">
+                                    <i class="fas fa-eye"></i>
                                 </a>
 
                                 @if(session('role') === 'Admin' || (isset($isAdmin) && $isAdmin))
-                               
-                                    <form action="{{ route('training.destroy', $training->id) }}" method="POST" style="display:inline;">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm shadow-sm" onclick="return confirm('Confirm Delete?')">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
+                                    @if(isset($training->status) && $training->status === 'Ended')
+                                  
+                                        <form action="{{ route('training.status.toggle', $training->id) }}" method="POST" style="display:inline;">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success btn-sm shadow-sm" title="Re-activate Training">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                        </form>
+                                    @else
+                                 
+                                        <form action="{{ route('training.destroy', $training->id) }}" method="POST" style="display:inline;">
+                                            @csrf
+                                            @method('DELETE')
+                                            
+                                            @if($currentCount > 0)
+                                                <button type="submit" class="btn btn-warning btn-sm shadow-sm" title="Archive as Ended" onclick="return confirm('This program has participants. It will be marked as Ended to protect records. Continue?')">
+                                                    <i class="fas fa-archive"></i>
+                                                </button>
+                                            @else
+                                                <button type="submit" class="btn btn-danger btn-sm shadow-sm" title="Delete Permanently" onclick="return confirm('Confirm Delete?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            @endif
+                                        </form>
+                                    @endif
                                 @endif
                             </td>
                         </tr>
