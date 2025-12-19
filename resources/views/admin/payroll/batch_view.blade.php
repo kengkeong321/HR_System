@@ -49,6 +49,11 @@
                                     <td class="text-end font-monospace">{{ number_format(($totals['epf_total'] ?? 0) + ($totals['socso_total'] ?? 0) + ($totals['eis_total'] ?? 0), 2) }}</td>
                                     <td class="small text-muted"><i class="bi bi-calculator"></i> System-calculated Snapshot</td>
                                 </tr>
+                                <tr>
+                                    <td>Manual Deductions (Adjustments)</td>
+                                    <td class="text-end font-monospace text-danger">{{ number_format($totals['manual_deduction'] ?? 0, 2) }}</td>
+                                    <td class="small text-muted"><i class="bi bi-person-gear"></i> Manual User Adjustments</td>
+                                </tr>
                                 <tr class="table-light border-top">
                                     <td class="fw-bold">NET UNIVERSITY OUTFLOW</td>
                                     <td class="text-end font-monospace fw-bold text-primary">RM {{ number_format($batch->total_amount, 2) }}</td>

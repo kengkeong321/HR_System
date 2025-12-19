@@ -20,6 +20,7 @@ class Payroll extends Model
         'basic_salary',
         'allowances',
         'deduction',
+        'manual_deduction',
         'net_salary',
         'status',
         'attendance_count',

@@ -22,6 +22,7 @@ class PayrollService
 
     public function __construct()
     {
+        // These strategies handle the complex Malaysian statutory tables
         $this->strategies['epf'] = new EPFStrategy();
         $this->strategies['socso'] = new SocsoTableStrategy();
     }
@@ -34,92 +35,80 @@ class PayrollService
             ->whereYear('created_at', $year)
             ->sum('amount');
     }
+    
 
-    public function calculateAndSavePayroll(Staff $staff, int $month, int $year, int $batchId, array $manualInputs = [])
+public function calculateAndSavePayroll(Staff $staff, int $month, int $year, int $batchId, array $manualInputs = [])
     {
-        // 1. Basic Salary & Attendance OT Integration
+        // 1. Fetch Dynamic Configuration from payroll_configs table
+        $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
+        
+        // Use column data: staff_epf_rate (12.0) and eis_rate (0.2)
+        $staffEpfRate = (float) ($configs['staff_epf_rate'] ?? 11.0) / 100;
+        $eisRate = (float) ($configs['eis_rate'] ?? 0.2) / 100;
+        $socsoCeiling = (float) ($configs['socso_ceiling'] ?? 6000.0);
+
+        // 2. Base Components from table columns / inputs
         $basic = (float) ($manualInputs['basic_salary'] ?? $staff->basic_salary);
+        $totalAllowances = (float) ($manualInputs['total_allowances'] ?? 0);
+        
+        // Use the new manual_deduction column data
+        $manualDeduction = (float) ($manualInputs['manual_deduction'] ?? 0);
 
-        // [FIX] Call the previously unused method to get OT hours
-        $otHours = $this->calculateAttendanceOt($staff, $month, $year);
-        $hourlyRate = (float) ($staff->hourly_rate ?? 0);
-        $calculatedAttendanceOtAmount = $otHours * $hourlyRate;
-
-        // 2. Lecturer Extra Class Logic
-        $extraClassAmount = 0;
-        if (stripos($staff->position, 'Lecturer') !== false) {
-            $extraClassAmount = DB::table('claims')
-                ->where('staff_id', $staff->staff_id)
-                ->where('claim_type', 'Extra Class')
-                ->where('status', 'Approved')
-                ->whereMonth('claim_date', $month)
-                ->whereYear('claim_date', $year)
-                ->sum('amount');
-        }
-
-        // 3. New Malaysian Statutory Ceiling (RM 6,000)
-        $socsoEisCeiling = 6000;
-        $salaryForStatutory = min($basic, $socsoEisCeiling);
-
-        // [FIX] Correct Statutory Calculations
+        // 3. Dynamic Statutory Calculations
         if ($basic > 0) {
-            $epfEmployee = $this->strategies['epf']->calculate($staff, ['basic_salary' => $basic, 'type' => 'employee']);
-            $epfEmployer = $this->strategies['epf']->calculate($staff, ['basic_salary' => $basic, 'type' => 'employer']);
-
-            // SOCSO/EIS math using the 6000 ceiling
+            // Employee EPF based on 12% from table
+            $epfEmployee = $basic * $staffEpfRate;
+            
+            // SOCSO/EIS capped by dynamic ceiling
+            $salaryForStatutory = min($basic, $socsoCeiling);
+            
             $socsoEmployee = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employee']);
-            $socsoEmployer = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employer']);
-
-            $eisRate = (DB::table('payroll_configs')->where('config_key', 'eis_rate')->value('config_value') ?? 0.2) / 100;
             $eisEmployee = $salaryForStatutory * $eisRate;
+
+            // Employer EPF based on low/high threshold from table
+            $threshold = (float) ($configs['employer_epf_threshold'] ?? 5000.0);
+            $employerRateKey = $basic <= $threshold ? 'employer_epf_rate_low' : 'employer_epf_rate_high';
+            $employerEpfRate = (float) ($configs[$employerRateKey] ?? 13.0) / 100;
+            
+            $epfEmployer = $basic * $employerEpfRate;
+            $socsoEmployer = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employer']);
             $eisEmployer = $salaryForStatutory * $eisRate;
         } else {
             $epfEmployee = $epfEmployer = $socsoEmployee = $socsoEmployer = $eisEmployee = $eisEmployer = 0;
         }
 
-        // 4. Final Totals
-        $generalClaims = $this->getApprovedClaimsTotal($staff->staff_id, $month, $year);
-
-        // Allowances = Claims + Attendance OT + Lecturer Extra Class + Manual Adjustments
-        $totalAllowances = $generalClaims + $calculatedAttendanceOtAmount + $extraClassAmount + ($manualInputs['total_allowances'] ?? 0);
-
-        $manualDeductions = (float) ($manualInputs['total_deductions'] ?? 0);
-        $totalDeductions = $epfEmployee + $socsoEmployee + $eisEmployee + $manualDeductions;
-
+        // 4. Final Math
+        $totalDeductions = $epfEmployee + $socsoEmployee + $eisEmployee + $manualDeduction;
         $netSalary = ($basic + $totalAllowances) - $totalDeductions;
 
-        // 5. Structure Breakdown and Save
-        $breakdown = [
-            'calculated_amounts' => [
-                'epf_employee_rm' => round($epfEmployee, 2),
-                'epf_employer_rm' => round($epfEmployer, 2),
-                'socso_employee_rm' => round($socsoEmployee, 2),
-                'socso_employer_rm' => round($socsoEmployer, 2),
-                'eis_employee_rm' => round($eisEmployee, 2),
-                'eis_employer_rm' => round($eisEmployer, 2),
-                'attendance_ot_hours' => $otHours,
-                'attendance_ot_rm' => round($calculatedAttendanceOtAmount, 2),
-                'manual_deduction_rm' => round($manualDeductions, 2)
-            ]
-        ];
-
+        // 5. Save everything back to the payrolls table columns
         return Payroll::updateOrCreate(
             ['staff_id' => $staff->staff_id, 'month' => $month, 'year' => $year],
             [
                 'batch_id' => $batchId,
-                'basic_salary' => $basic,
-                'allowances' => $totalAllowances,
-                'deduction' => $totalDeductions,
-                'net_salary' => $netSalary,
+                'basic_salary' => round($basic, 2),
+                'allowances' => round($totalAllowances, 2),
+                'deduction' => round($totalDeductions, 2),
+                'manual_deduction' => round($manualDeduction, 2), // Maps to your new column
+                'net_salary' => round($netSalary, 2),
                 'status' => 'Draft',
-                'breakdown' => $breakdown,
+                'breakdown' => [
+                    'calculated_amounts' => [
+                        'epf_employee_rm' => round($epfEmployee, 2),
+                        'epf_employer_rm' => round($epfEmployer, 2),
+                        'socso_employee_rm' => round($socsoEmployee, 2),
+                        'socso_employer_rm' => round($socsoEmployer, 2),
+                        'eis_employee_rm' => round($eisEmployee, 2),
+                        'eis_employer_rm' => round($eisEmployer, 2),
+                    ]
+                ],
                 'allowance_remark' => $manualInputs['allowance_remark'] ?? null,
-                'deduction_remark' => $manualInputs['deduction_remark'] ?? null, // [FIX] Added missing column
+                'deduction_remark' => $manualInputs['deduction_remark'] ?? null,
             ]
         );
     }
 
-    public function updateBatchTotals($batchId)
+   public function updateBatchTotals($batchId)
     {
         $freshTotals = Payroll::where('batch_id', $batchId)
             ->selectRaw('SUM(net_salary) as total_disbursement, COUNT(*) as count')

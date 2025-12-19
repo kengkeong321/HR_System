@@ -100,6 +100,7 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
         Route::post('/settings/update', [PayrollSettingController::class, 'update'])->name('settings.update');
     });
     Route::resource('payroll', PayrollController::class)->except(['show', 'create', 'store']);
+    
 
     /*
     |--------------------------------------------------------------------------

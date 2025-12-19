@@ -115,13 +115,16 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-4">
+                                   <div class="col-md-4">
                                         <label class="form-label small fw-bold">Amount (RM)</label>
                                         <input type="number" step="0.01" min="0"
-                                            name="total_deductions"
+                                            name="manual_deduction" {{-- Match your new column name --}}
                                             id="total_deductions"
                                             class="form-control calc-trigger"
-                                            value="{{ old('total_deductions', $payroll->deduction ?? 0) }}">
+                                            value="{{ old('manual_deduction', $manualAmount) }}">
+                                        <small class="text-muted">
+                                            <i class="bi bi-info-circle"></i> Enter only non-statutory deductions.
+                                        </small>
                                     </div>
                                     <div class="col-md-8">
                                         <label class="form-label small fw-bold">Remarks / Category</label>
@@ -252,38 +255,43 @@
         }
 
         /**
-         * Calculate net salary and statutory deductions
-         */
-        function calculateNet() {
-            const basic = parseFloat(document.getElementById('basic_salary').value) || 0;
-            const allowances = parseFloat(document.getElementById('total_allowances').value) || 0;
-            const manualDeductions = parseFloat(document.getElementById('total_deductions').value) || 0;
+        * Calculate net salary and statutory deductions
+        */
+       function calculateNet() {
+        const basic = parseFloat(document.getElementById('basic_salary').value) || 0;
+        const allowances = parseFloat(document.getElementById('total_allowances').value) || 0;
+        const manualDeductions = parseFloat(document.getElementById('total_deductions').value) || 0;
 
-            const epf = basic * STAFF_EPF_RATE;
+        // 1. Calculate EPF (usually round numbers if salary is round)
+        const epf = basic * STAFF_EPF_RATE;
 
-            const cappedSalary = Math.min(basic, 6000);
-            const socso = cappedSalary * SOCSO_RATE;
-            const eis = cappedSalary * EIS_RATE;
-
-            const statutoryTotal = epf + socso + eis;
-
-            const net = (basic + allowances) - (manualDeductions + statutoryTotal);
-
-            document.getElementById('epf_employee').value = epf.toFixed(2);
-            document.getElementById('socso_eis_display').value = (socso + eis).toFixed(2);
-            document.getElementById('net_salary').value = net.toFixed(2);
-            document.getElementById('save-btn').disabled = net < 0;
-
-            const netInput = document.getElementById('net_salary');
-            if (net < 0) {
-                netInput.classList.add('border-danger');
-                netInput.classList.remove('border-success');
-            } else {
-                netInput.classList.remove('border-danger');
-                netInput.classList.add('border-success');
+        // 2. Official SOCSO Bracket Logic (Matches the .75 in your Ledger)
+        let socso = 0;
+        if (basic > 0) {
+            if (basic <= 30) socso = 0.10;
+            else if (basic <= 3000) socso = 14.75; // Matches your RM 3,000 staff
+            else if (basic <= 3100) socso = 15.25;
+            else if (basic <= 3500) socso = 17.25; // Matches your RM 3,500 staff
+            else if (basic > 6000)  socso = 29.75; // Capped at ceiling
+            else {
+                // Approximation for other brackets
+                socso = Math.floor(basic / 100) * 0.5 + 0.25; 
             }
         }
 
+        // 3. EIS Calculation (0.2%)
+        const cappedSalary = Math.min(basic, 6000);
+        const eis = cappedSalary * EIS_RATE;
+
+        // 4. Update the View
+        const statutoryTotal = epf + socso + eis;
+        const net = (basic + allowances) - (manualDeductions + statutoryTotal);
+
+        document.getElementById('epf_employee').value = epf.toFixed(2);
+        // This will now show the decimals like .75 or .25 correctly
+        document.getElementById('socso_eis_display').value = (socso + eis).toFixed(2);
+        document.getElementById('net_salary').value = net.toFixed(2);
+    }
         document.querySelectorAll('.calc-trigger').forEach(input => {
             input.addEventListener('input', calculateNet);
         });

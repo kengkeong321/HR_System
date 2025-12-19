@@ -36,7 +36,35 @@ class PayrollController extends Controller
 
     public function index()
     {
+        // 1. Fetch all batches
         $batches = PayrollBatch::orderBy('created_at', 'desc')->get();
+
+        // 2. Auto-refresh Draft batches to apply new statutory rates
+        foreach ($batches as $batch) {
+            if ($batch->status === 'Draft') {
+                $payrolls = Payroll::where('batch_id', $batch->id)->get();
+                
+                foreach ($payrolls as $payroll) {
+                    // This call uses your dynamic service to re-calculate based on CURRENT table rates
+                    $this->payrollService->calculateAndSavePayroll(
+                        $payroll->staff,
+                        (int)$payroll->month,
+                        (int)$payroll->year,
+                        (int)$batch->id,
+                        [
+                            'basic_salary'      => $payroll->basic_salary,
+                            'total_allowances'  => $payroll->allowances,
+                            'manual_deduction'  => $payroll->manual_deduction,
+                            'allowance_remark'  => $payroll->allowance_remark,
+                            'deduction_remark'  => $payroll->deduction_remark,
+                        ]
+                    );
+                }
+                // Update the batch total amount after re-calculating all staff
+                $this->payrollService->updateBatchTotals($batch->id);
+            }
+        }
+
         return view('admin.payroll.index', compact('batches'));
     }
 
@@ -44,17 +72,36 @@ class PayrollController extends Controller
     {
         return $this->batch_view($id);
     }
+    
 
     public function batch_view($id)
     {
         $batch = PayrollBatch::findOrFail($id);
+        
+        if ($batch->status === 'Draft') {
+            $payrolls = Payroll::where('batch_id', $id)->get();
+            foreach ($payrolls as $payroll) {
+                // Requirement 3: Consuming the Attendance Web Service
+                // We pass the data to the service which will handle the API call
+                $this->payrollService->calculateAndSavePayroll(
+                    $payroll->staff,
+                    (int)$payroll->month,
+                    (int)$payroll->year,
+                    (int)$id,
+                    [
+                        'basic_salary' => $payroll->basic_salary,
+                        'total_allowances' => $payroll->allowances,
+                        'manual_deduction' => $payroll->manual_deduction
+                    ]
+                );
+            }
+            $this->payrollService->updateBatchTotals($id);
+        }
+
         $payrolls = Payroll::with('staff')->where('batch_id', $id)->get();
-
         $totals = $this->getBatchStatutoryTotals($id);
-        $rejectionReasons = DB::table('rejection_reasons')->get();
-        $varianceMsg = "Data verified against current statutory rates.";
-
-        return view('admin.payroll.batch_view', compact('batch', 'payrolls', 'varianceMsg', 'rejectionReasons', 'totals'));
+        
+        return view('admin.payroll.batch_view', compact('batch', 'payrolls', 'totals'));
     }
 
     public function generateBatch(Request $request)
@@ -113,17 +160,23 @@ class PayrollController extends Controller
         }
     }
 
-    public function edit($id)
+  public function edit($id)
     {
+        // Fetch the record with relationships
         $payroll = Payroll::with(['staff.user'])->findOrFail($id);
+
+        // Pull directly from your NEW column
+        $manualAmount = $payroll->manual_deduction ?? 0;
+
+        // Get system configurations
         $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
 
-        // Parse month correctly
+        // Parse month for attendance
         $monthNumber = is_numeric($payroll->month)
             ? (int)$payroll->month
-            : Carbon::parse($payroll->month . " 1 " . $payroll->year)->month;
+            : \Carbon\Carbon::parse($payroll->month . " 1 " . $payroll->year)->month;
 
-        // Count present days for attendance verification
+        // Count present days
         $daysPresent = DB::table('attendances')
             ->where('user_id', $payroll->staff->user_id)
             ->whereYear('attendance_date', $payroll->year)
@@ -134,53 +187,58 @@ class PayrollController extends Controller
         $allowanceCategories = DB::table('payroll_categories')->where('type', 'Allowance')->get();
         $deductionCategories = DB::table('payroll_categories')->where('type', 'Deduction')->get();
 
-        return view('admin.payroll.edit', compact('payroll', 'configs', 'daysPresent', 'allowanceCategories', 'deductionCategories'));
+        return view('admin.payroll.edit', compact(
+            'payroll', 
+            'configs', 
+            'daysPresent', 
+            'allowanceCategories', 
+            'deductionCategories', 
+            'manualAmount'
+        ));
     }
 
-    public function update(Request $request, $id)
-    {
-        $request->validate([
-            'basic_salary'     => 'required|numeric|min:0',
-            'total_allowances' => 'required|numeric|min:0',
-            'total_deductions' => 'required|numeric|min:0',
-            'allowance_remark' => 'nullable|string|max:500',
-            'deduction_remark' => 'nullable|string|max:500',
-        ]);
+  public function update(Request $request, $id)
+{
+    $request->validate([
+        'basic_salary'     => 'required|numeric|min:0',
+        'total_allowances' => 'required|numeric|min:0',
+        'manual_deduction' => 'required|numeric|min:0', // Matches your new column
+    ]);
 
-        try {
-            DB::beginTransaction();
-            $payroll = Payroll::findOrFail($id);
+    try {
+        DB::beginTransaction();
+        $payroll = Payroll::findOrFail($id);
 
-            // Prepare inputs for service
-            $inputs = [
-                'basic_salary'     => $request->basic_salary,
-                'total_allowances' => $request->total_allowances,
-                'total_deductions' => $request->total_deductions,
-                'allowance_remark' => $request->allowance_remark,
-                'deduction_remark' => $request->deduction_remark,
-            ];
+        // We pass the data to the service. 
+        // The service now fetches the NEW 12% rate from the table.
+        $inputs = [
+            'basic_salary'      => $request->basic_salary,
+            'total_allowances'  => $request->total_allowances,
+            'manual_deduction'  => $request->manual_deduction, 
+            'allowance_remark'  => $request->allowance_remark,
+            'deduction_remark'  => $request->deduction_remark,
+        ];
 
-            // Recalculate using service
-            $this->payrollService->calculateAndSavePayroll(
-                $payroll->staff,
-                $payroll->month,
-                $payroll->year,
-                $payroll->batch_id,
-                $inputs
-            );
+        // This method recalculates the 'deduction' and 'net_salary' columns.
+        $this->payrollService->calculateAndSavePayroll(
+            $payroll->staff,
+            $payroll->month,
+            $payroll->year,
+            $payroll->batch_id,
+            $inputs
+        );
 
-            // Update batch totals
-            $this->payrollService->updateBatchTotals($payroll->batch_id);
+        // Update the top Audit Summary totals
+        $this->payrollService->updateBatchTotals($payroll->batch_id);
 
-            DB::commit();
-            return redirect()->route('admin.payroll.batch_view', $payroll->batch_id)
-                ->with('success', 'Payroll record and batch totals updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Payroll Update Failed: " . $e->getMessage());
-            return back()->with('error', 'Update failed: ' . $e->getMessage())->withInput();
-        }
+        DB::commit();
+        return redirect()->route('admin.payroll.batch_view', $payroll->batch_id)
+            ->with('success', 'Calculation updated with new statutory rates.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return back()->with('error', 'Update failed: ' . $e->getMessage());
     }
+}
 
     public function approveL1($id)
     {
@@ -290,40 +348,37 @@ class PayrollController extends Controller
      */
     private function getBatchStatutoryTotals($batchId)
     {
-        $payrolls = Payroll::where('batch_id', $batchId)->get();
+        // Use selectRaw for better performance when summing columns
+        $summary = Payroll::where('batch_id', $batchId)
+            ->selectRaw('
+                SUM(basic_salary) as total_basic, 
+                SUM(allowances) as total_allowances, 
+                SUM(manual_deduction) as total_manual,
+                SUM(net_salary) as total_net
+            ')
+            ->first();
 
-        $totals = [
-            'epf_employee' => 0,
-            'epf_employer' => 0,
-            'socso_employee' => 0,
-            'socso_employer' => 0,
-            'eis_employee' => 0,
-            'eis_employer' => 0,
-            'net_salary' => 0
-        ];
+        $payrolls = Payroll::where('batch_id', $batchId)->get();
+        $epf = 0; $socso = 0; $eis = 0;
 
         foreach ($payrolls as $payroll) {
-            // Parse breakdown JSON
-            $breakdown = is_string($payroll->breakdown)
-                ? json_decode($payroll->breakdown, true)
-                : $payroll->breakdown;
-
+            $breakdown = is_string($payroll->breakdown) ? json_decode($payroll->breakdown, true) : $payroll->breakdown;
             $amounts = $breakdown['calculated_amounts'] ?? [];
-
-            $totals['epf_employee']   += ($amounts['epf_employee_rm'] ?? 0);
-            $totals['epf_employer']   += ($amounts['epf_employer_rm'] ?? 0);
-            $totals['socso_employee'] += ($amounts['socso_employee_rm'] ?? 0);
-            $totals['socso_employer'] += ($amounts['socso_employer_rm'] ?? 0);
-            $totals['eis_employee']   += ($amounts['eis_employee_rm'] ?? 0);
-            $totals['eis_employer']   += ($amounts['eis_employer_rm'] ?? 0);
-            $totals['net_salary']     += $payroll->net_salary;
+            
+            // Sum Employee portion only for Audit Verification
+            $epf   += ($amounts['epf_employee_rm'] ?? 0);
+            $socso += ($amounts['socso_employee_rm'] ?? 0);
+            $eis   += ($amounts['eis_employee_rm'] ?? 0);
         }
 
-        // Round all totals
-        foreach ($totals as $key => $value) {
-            $totals[$key] = round($value, 2);
-        }
-
-        return $totals;
+        return [
+            'basic_salary'     => $summary->total_basic ?? 0,
+            'allowances'       => $summary->total_allowances ?? 0,
+            'manual_deduction' => $summary->total_manual ?? 0, // Passed to Blade
+            'epf_total'        => $epf,
+            'socso_total'      => $socso,
+            'eis_total'        => $eis,
+        ];
     }
+    
 }
