@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsStaffOnly;
 use App\Http\Controllers\Admin\AttendanceController;
 use App\Http\Controllers\Admin\PayrollController;
 use App\Http\Controllers\Admin\PayrollSettingController;
@@ -12,6 +13,8 @@ use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\LeaveController;
 use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\Staff\StaffClaimController;
+use App\Models\Attendance;
+use Illuminate\Http\Request;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,11 +74,11 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     // --- User Management (Admin only) ---
     Route::resource('users', \App\Http\Controllers\Admin\UserController::class)
         ->except(['show', 'destroy'])
-        ->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+        ->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 
     Route::patch('users/{user}/status', [\App\Http\Controllers\Admin\UserController::class, 'toggleStatus'])
         ->name('users.toggleStatus')
-        ->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+        ->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 
     /*
     |--------------------------------------------------------------------------
@@ -115,9 +118,21 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
 
     // --- Faculty, Department, Course CRUD ---
     Route::resource('faculties', \App\Http\Controllers\Admin\FacultyController::class)->except(['show', 'destroy']);
+    // Positions module
+    Route::resource('positions', \App\Http\Controllers\Admin\PositionController::class)->except(['show', 'destroy']);
+    Route::patch('positions/{position}/status', [\App\Http\Controllers\Admin\PositionController::class, 'toggleStatus'])->name('positions.toggleStatus');
+    Route::post('positions/page', [\App\Http\Controllers\Admin\PositionController::class, 'page'])->name('positions.page');
+
+    // AJAX: return active departments for a faculty (used by faculties index modal)
+    Route::get('faculties/{faculty}/departments', [\App\Http\Controllers\Admin\FacultyController::class, 'departments'])->name('faculties.departments');
     Route::patch('faculties/{faculty}/status', [\App\Http\Controllers\Admin\FacultyController::class, 'toggleStatus'])->name('faculties.toggleStatus');
 
     Route::resource('departments', \App\Http\Controllers\Admin\DepartmentController::class)->except(['show', 'destroy']);
+    // Assignment routes for departments (assign courses)
+    Route::get('departments/{department}/assign', [\App\Http\Controllers\Admin\DepartmentController::class, 'assign'])->name('departments.assign');
+    Route::post('departments/{department}/assign', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignStore'])->name('departments.assign.store');
+    // API for modal: get assigned courses for a department (used by the assignments modal)
+    Route::get('departments/{department}/assignments', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignments'])->name('departments.assignments');
     Route::patch('departments/{department}/status', [\App\Http\Controllers\Admin\DepartmentController::class, 'toggleStatus'])->name('departments.toggleStatus');
 
     Route::resource('courses', \App\Http\Controllers\Admin\CourseController::class)->except(['show', 'destroy']);
@@ -127,9 +142,13 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::post('faculties/page', [\App\Http\Controllers\Admin\FacultyController::class, 'page'])->name('faculties.page');
     Route::post('departments/page', [\App\Http\Controllers\Admin\DepartmentController::class, 'page'])->name('departments.page');
     Route::post('courses/page', [\App\Http\Controllers\Admin\CourseController::class, 'page'])->name('courses.page');
-    Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdminOnly::class);
+    Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
+
+
 });
 
+// Positions API (Active only) - returns active positions list for dropdowns
+Route::get('/api/positions', [\App\Http\Controllers\Api\PositionController::class, 'index'])->name('api.positions.index');
 
 // Staff routes
 Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
@@ -159,7 +178,7 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
 
 /*
 |--------------------------------------------------------------------------
-| System Utilities
+| System Utilities 
 |--------------------------------------------------------------------------
 */
 
@@ -180,22 +199,48 @@ Route::post('/_sidebar/toggle', function (\Illuminate\Http\Request $request) {
 
 use App\Http\Controllers\Admin\TrainingController;
 
-Route::middleware([\App\Http\Middleware\EnsureUserLoggedIn::class])->group(function () {
-
-
+Route::middleware(['auth'])->group(function () {
+    
+    //(Static Routes) ---
     Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
-    Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
-    Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
     Route::get('/training/create/new', [TrainingController::class, 'create'])->name('training.create');
-    Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
-    Route::delete('/training/{id}', [TrainingController::class, 'destroy'])->name('training.destroy');
-    Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
-    Route::post('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assign'])->name('training.assign');
+    
+    
+    Route::get('/training/records', [TrainingController::class, 'records'])->name('training.records');
+    Route::post('/training/records', [TrainingController::class, 'records']);
+
+    //(Dynamic Routes) ---
+    Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
     Route::get('/training/{id}/edit', [TrainingController::class, 'edit'])->name('training.edit');
+    Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
+    
+    // (Actions) ---
+    Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
     Route::put('/training/{id}', [TrainingController::class, 'update'])->name('training.update');
-    Route::match(['get', 'post'], '/training/records', [App\Http\Controllers\Admin\TrainingController::class, 'records'])->name('training.records');
-    Route::post('/training/{id}/user/{userId}/status', [TrainingController::class, 'updateStatus'])->name('training.status');
+    Route::delete('/training/{id}', [TrainingController::class, 'destroy'])->name('training.destroy');
+    Route::post('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assign'])->name('training.assign');
+    Route::post('/training/{id}/feedback', [TrainingController::class, 'storeFeedback'])->name('training.feedback');
+    Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])->name('training.updateStatus');
     Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
-    Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])
-        ->name('training.updateStatus');
+    Route::post('/training/{id}/status-toggle', [TrainingController::class, 'activate'])->name('training.status.toggle');
+});
+
+use App\Http\Controllers\Staff\StaffTrainingController;
+
+Route::middleware(['auth'])->group(function () {
+   
+    Route::get('/staff/my-trainings', [StaffTrainingController::class, 'index'])
+         ->name('staff.trainings.index');
+
+Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeedback'])
+         ->name('staff.feedback.store');
+
+         
+});
+
+Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])->group(function () {
+    // This is the specific route the sidebar is looking for
+    Route::get('/admin/attendance/test-api', function () {
+        return view('admin.attendance.api_test');
+    })->name('admin.attendance.test_api');
 });

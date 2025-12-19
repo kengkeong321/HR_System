@@ -8,32 +8,51 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Attendance;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 class AttendanceController extends Controller
 {
 
-    public function index(Request $request)
-    {
-        // 1. Initialize query with user relationship
-        $query = Attendance::with('user');
+// Add these at the very top of your file
 
-        // 2. Filter by User ID (passed from the 'Verify' link in Payroll)
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
 
-        // 3. Filter by Month (passed from Payroll, e.g., 'June')
-        if ($request->has('month')) {
-            // Convert month name to number (e.g., 'June' becomes 6)
-            $monthNumber = date('m', strtotime($request->month));
-            $query->whereMonth('attendance_date', $monthNumber);
-        }
+// Update your index method
+public function index(Request $request)
+{
+    // 1. Optimized Eager Loading (reduces database hits)
+    $query = \App\Models\Attendance::with('user');
 
-        // 4. Fetch the results (keeping your original ordering)
-        $attendances = $query->orderBy('attendance_date', 'desc')->get();
-
-        return view('admin.attendance.index', compact('attendances'));
+    if ($request->has('user_id')) {
+        $query->where('user_id', $request->user_id);
     }
+
+    $attendances = $query->orderBy('attendance_date', 'desc')->get();
+
+    // 2. Optimized Service Consumption with Cache
+    // This stores the position names for 10 minutes so it doesn't call the API every time
+    $posMap = Cache::remember('positions_map', 600, function () {
+        try {
+            // Set a 3-second timeout so the page doesn't hang forever
+            $response = Http::timeout(3)->get(url('/api/positions'), [
+                'requestID' => 'REQ-' . time(),
+                'timeStamp' => now()->format('Y-m-d H:i:s')
+            ]);
+
+            if ($response->successful()) {
+                $json = $response->json();
+                if (isset($json['status']) && $json['status'] === 'ok') {
+                    return collect($json['data'])->pluck('name', 'position_id')->toArray();
+                }
+            }
+        } catch (\Exception $e) {
+            return []; // Return empty if teammate's API is down
+        }
+        return [];
+    });
+
+    return view('admin.attendance.index', compact('attendances', 'posMap'));
+}
 
     public function create(Request $request)
     {
@@ -158,56 +177,39 @@ class AttendanceController extends Controller
 
     public function staffStore(Request $request)
     {
-        $userId = session('user_id');
+        // Access Control [89]: Use session to ensure staff only mark their own attendance
+        $userId = session('user_id'); 
         $today = now()->toDateString();
-        $currentTime = now()->toTimeString(); // Captures current time, e.g., "09:15:00"
+        $currentTime = now()->toTimeString();
         $action = $request->input('action_type');
 
-        // 1. Find if a record exists for today to prevent duplicates
+        // 1. Prevent Duplicates: Check if a record exists for today
         $record = \App\Models\Attendance::where('user_id', $userId)
             ->where('attendance_date', $today)
             ->first();
 
+        // LOGIC FOR CLOCK IN
         if ($action == 'in') {
             if ($record) {
                 return back()->with('error', 'You have already clocked in today!');
             }
 
-            // 2. Fetch the Standard Work Start Time from your settings table
-            $startTimeSetting = DB::table('settings')
-                ->where('key_name', 'work_start_time')
-                ->value('key_value');
-
-            // Fallback default if setting is missing to prevent errors
-            if (!$startTimeSetting) {
-                $startTimeSetting = '09:00:00';
-            }
-
-            // 3. Automated Logic: Compare current time to start time
-            // If currentTime is LATER than startTimeSetting, status becomes 'Late'
-            $status = (strtotime($currentTime) > strtotime($startTimeSetting)) ? 'Late' : 'Present';
-
+            /** * OBSERVER PATTERN IMPLEMENTATION:
+             * We save the status as 'Present' by default. 
+             * Once 'create' is called, the AttendanceObserver will automatically 
+             * check the time and update the status to 'Late' if necessary.
+             */
             \App\Models\Attendance::create([
                 'user_id' => $userId,
                 'attendance_date' => $today,
                 'clock_in_time' => $currentTime,
-                'status' => $status, // Dynamic status based on logic
-                'remarks' => ($status === 'Late') ? 'Auto-marked: Late arrival' : null
+                'status' => 'Present', // The Observer will override this if late
             ]);
 
-            $message = ($status === 'Late') 
-                ? 'Clock-in recorded. You are marked as Late.' 
-                : 'Clock-in successful! Have a great day.';
-
-            if ($status === 'Late') {
-                // Send a warning instead of success for late users
-                return back()->with('warning', 'Clock-in recorded. You are marked as Late!');
-            }
-
-            return back()->with('success', $message);
-            
+            return back()->with('success', 'Clock-in recorded successfully!');
         }
 
+        // LOGIC FOR CLOCK OUT
         if ($action == 'out') {
             if (!$record) {
                 return back()->with('error', 'No clock-in record found. Please clock in first!');
@@ -217,12 +219,38 @@ class AttendanceController extends Controller
                 return back()->with('error', 'You have already clocked out today!');
             }
 
+            // Data Protection [138]: Updating via server-side logic, not URL parameters
             $record->update([
                 'clock_out_time' => $currentTime
             ]);
 
             return back()->with('success', 'Clock-out successful! See you tomorrow.');
         }
-        
+    }
+
+    public function getPositionsFromTeammate()
+    {
+        // Mandatory Parameters for tracking
+        $requestId = 'REQ-' . time();
+        $timestamp = now()->format('Y-m-d H:i:s');
+
+        try {
+            // Consuming the web service provided by your teammate
+            $response = Http::get(url('/api/positions'), [
+                'requestID' => $requestId,
+                'timeStamp' => $timestamp
+            ]);
+
+            if ($response->successful()) {
+                $json = $response->json();
+                // Validate the status field as per IFA agreement
+                if ($json['status'] === 'ok') {
+                    return $json['data']; 
+                }
+            }
+            return [];
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 }

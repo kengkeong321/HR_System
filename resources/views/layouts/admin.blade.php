@@ -149,12 +149,29 @@
           </li>
 
           <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" href="{{ route('admin.positions.index') }}"><i class="bi bi-person-badge me-2"></i><span class="label">Positions</span></a>
+          </li>
+
+          <li class="nav-item">
             <a class="nav-link d-flex align-items-center" href="{{ route('admin.departments.index') }}"><i class="bi bi-diagram-3 me-2"></i><span class="label">Departments</span></a>
           </li>
 
           <li class="nav-item">
             <a class="nav-link d-flex align-items-center" href="{{ route('admin.courses.index') }}"><i class="bi bi-journal-bookmark me-2"></i><span class="label">Courses</span></a>
           </li>
+
+          <li class="nav-item">
+          <a class="nav-link d-flex align-items-center {{ request()->routeIs('training.*') ? 'active' : '' }}" href="{{ route('training.index') }}">
+          <i class="bi bi-mortarboard me-2"></i>
+          <span class="label">Training & Dev</span>
+          </a>
+          </li>
+          <li class="nav-item">
+    <a class="nav-link d-flex align-items-center {{ request()->routeIs('training.records') ? 'active' : '' }}" href="{{ route('training.records') }}">
+        <i class="bi bi-person-badge me-2"></i>
+        <span class="label">Staff Records</span>
+    </a>
+</li>
 
           <li class="nav-item">
             <a class="nav-link d-flex align-items-center" href="{{ route('admin.dashboard') }}"><i class="bi bi-speedometer2 me-2"></i><span class="label">Dashboard</span></a>
@@ -237,6 +254,15 @@
               style="margin-left: -2%;"> <i class="bi bi-gear me-2" style="width: 25px; text-align: center;"></i>
               <span class="label">Settings</span>
             </a>
+          </li>
+        </ul>
+
+        <ul class="nav flex-column ms-0 p-0" style="list-style: none;">
+          <li class="nav-item">
+              <a href="{{ route('admin.attendance.test_api') }}" class="nav-link">
+                  <i class="bi bi-cpu me-2"></i>
+                  <span>API Connection Test</span>
+              </a>
           </li>
         </ul>
 

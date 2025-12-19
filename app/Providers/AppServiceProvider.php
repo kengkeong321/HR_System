@@ -10,20 +10,28 @@ use App\Models\Claim;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
+   
     public function register(): void
     {
         // Bind repository interfaces to Eloquent implementations
         $this->app->bind(\App\Repositories\FacultyRepositoryInterface::class, \App\Repositories\EloquentFacultyRepository::class);
         $this->app->bind(\App\Repositories\DepartmentRepositoryInterface::class, \App\Repositories\EloquentDepartmentRepository::class);
         $this->app->bind(\App\Repositories\CourseRepositoryInterface::class, \App\Repositories\EloquentCourseRepository::class);
+
+
+    $this->app->bind('training_service', function ($app) {
+        return new \App\Services\TrainingService();
+    });
+
+    $this->app->bind('staff_training_engine', function ($app) {
+        return new \App\Services\StaffTrainingService();
+    });
+
+    $this->app->bind(\App\Repositories\PositionRepositoryInterface::class, \App\Repositories\EloquentPositionRepository::class);
+  
     }
 
-    /**
-     * Bootstrap any application services.
-     */
+    
     public function boot(): void
     {
         View::composer('layouts.staff', function ($view) {
@@ -40,5 +48,6 @@ class AppServiceProvider extends ServiceProvider
     });
 
         Gate::policy(\App\Models\Payroll::class, \App\Policies\PayrollPolicy::class);
+        \App\Models\Attendance::observe(\App\Observers\AttendanceObserver::class);
     }
 }

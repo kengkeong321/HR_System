@@ -87,6 +87,13 @@
             </a>
           </li>
 
+                 <li class="nav-item">
+  <a href="{{ route('staff.trainings.index') }}" class="nav-link d-flex align-items-center {{ request()->is('staff/my-trainings*') ? 'active' : '' }}">
+    <i class="fas fa-graduation-cap me-2" style="width: 20px;"></i>
+    <span class="label">My Training</span>
+  </a>
+</li>
+
           <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3">Attendance</li>
 
           <li class="nav-item">
@@ -96,9 +103,19 @@
             </a>
           </li>
 
+          <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3">Time Off</li>
+
+          <li class="nav-item">
+              <a href="{{ route('staff.leave.index') }}" class="nav-link d-flex align-items-center {{ request()->routeIs('staff.leave.*') ? 'active' : '' }}">
+                  <i class="bi bi-calendar-event me-2"></i>
+                  <span class="label">Leave Request</span>
+              </a>
+          </li>
+
           <li class="nav-header text-muted small text-uppercase mt-3 mb-1 ms-3 label" style="font-size: 0.75rem; letter-spacing: 0.5px;">
             Financials
           </li>
+   
 
           <li class="nav-item">
             <a class="nav-link d-flex align-items-center {{ request()->routeIs('staff.payroll.*') ? 'active' : '' }}" href="{{ route('staff.payroll.my_payslips') }}">
@@ -119,6 +136,8 @@
               <i class="bi bi-list-check me-2"></i>
               <span class="label">My Claims Status</span>
 
+              
+            
               @if(isset($sidebarRejectionCount) && $sidebarRejectionCount > 0)
               <span class="badge rounded-pill bg-danger ms-auto shadow-sm">
                 {{ $sidebarRejectionCount }}

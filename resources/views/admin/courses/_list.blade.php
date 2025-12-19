@@ -14,7 +14,7 @@
       <td>{{ $c->course_name }}</td>
       <td><span class="badge bg-{{ $c->status === 'Active' ? 'success' : 'danger' }}">{{ $c->status }}</span></td>
       <td>
-        <a href="{{ route('admin.courses.edit', $c) }}" class="btn btn-sm btn-secondary">Edit</a>
+        <a href="{{ route('admin.courses.edit', $c) }}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit mr-1"></i> Edit</a>
         <form action="{{ route('admin.courses.toggleStatus', $c) }}" method="POST" style="display:inline-block" onsubmit="return confirm('Change status?')">
           @csrf
           @method('PATCH')

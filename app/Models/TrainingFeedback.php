@@ -12,12 +12,12 @@ class TrainingFeedback extends Model
    
     protected $table = 'training_feedbacks'; 
 
-    protected $fillable = [
-        'user_id',
-        'training_program_id',
-        'comments',
-        'rating'
-    ];
+ protected $fillable = [
+    'user_id', 
+    'training_program_id', 
+    'rating', 
+    'comments' 
+];
 
    
     public function user()

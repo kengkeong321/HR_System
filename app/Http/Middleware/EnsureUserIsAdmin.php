@@ -8,21 +8,26 @@ use Illuminate\Http\Request;
 
 class EnsureUserIsAdmin
 {
-    /**
-     * Handle an incoming request.
-     *
-     */
     public function handle(Request $request, Closure $next)
     {
         $userId = $request->session()->get('user_id');
 
+        //handle not logged in
         if (! $userId) {
-            return redirect()->route('login');
+            $request->session()->flush();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors(['auth' => 'Please login first.']);
         }
 
+        //handle not admin
         $user = User::find($userId);
 
-        $allowedRoles = ['Admin', 'Staff', 'HR', 'Finance'];
+        if (! $user || ! in_array($user->role, ['Admin'])) {
+            $request->session()->flush();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
         if (! $user || ! in_array($user->role, ['Admin', 'Staff', 'HR', 'Finance'])) {
             return redirect()->route('login')->withErrors(['access' => 'Admin or Staff access required']);

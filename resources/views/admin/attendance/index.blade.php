@@ -23,7 +23,12 @@
                     @foreach($attendances as $record)
                     <tr>
                         <td>{{ $record->attendance_date }}</td>
-                        <td>{{ $record->user->user_name ?? 'N/A' }}</td>
+                        <td>{{ $record->user->user_name ?? 'N/A' }}
+                            <span class="badge bg-secondary small">
+                                <i class="bi bi-briefcase me-1"></i>
+                                {{ $record->user?->staff?->position ?? 'N/A' }}
+                            </span>
+                        </td>
                         <td>
                             <span class="badge {{ $record->status == 'Present' ? 'bg-success' : 'bg-danger' }}">
                                 {{ $record->status }}
