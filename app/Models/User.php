@@ -54,4 +54,17 @@ class User extends Authenticatable
     {
         return $this->hasOne(Staff::class, 'user_id', 'user_id');
     }
+
+
+
+
+
+
+    public function trainings()
+    {
+        
+        return $this->belongsToMany(TrainingProgram::class, 'training_attendance', 'user_id', 'training_program_id')
+                    ->withPivot('status') 
+                    ->withTimestamps();
+    }
 }

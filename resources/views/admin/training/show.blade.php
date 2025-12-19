@@ -94,7 +94,6 @@
                                             <option value="Assigned" {{ $status == 'Assigned' ? 'selected' : '' }}>Assigned</option>
                                             <option value="Attended" {{ $status == 'Attended' ? 'selected' : '' }}>Attended</option>
                                             <option value="Missed" {{ $status == 'Missed' ? 'selected' : '' }}>Missed (Absent)</option>
-                                            <option value="Completed" {{ $status == 'Completed' ? 'selected' : '' }}>Completed</option>
                                         </select>
                                     </form>
                                 </td>
