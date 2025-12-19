@@ -244,3 +244,23 @@ Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])->grou
         return view('admin.attendance.api_test');
     })->name('admin.attendance.test_api');
 });
+
+/*
+|--------------------------------------------------------------------------
+| staff management
+|--------------------------------------------------------------------------
+*/
+
+use App\Http\Controllers\Admin\StaffController;
+
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    // 1. AJAX Check (Simplified name)
+    // The actual name will be 'admin.staff.checkEmail'
+    Route::get('staff/check-email', [StaffController::class, 'checkEmail'])->name('staff.checkEmail');
+
+    // 2. Pagination route
+    Route::get('staff/page', [StaffController::class, 'page'])->name('staff.page');
+
+    // 3. Resource routes (index, create, store, etc.)
+    Route::resource('staff', StaffController::class);
+});

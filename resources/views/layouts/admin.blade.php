@@ -102,6 +102,18 @@
         width: 100%;
       }
     }
+
+    nav[role="navigation"] svg {
+        width: 1.25rem; /* Equivalent to 20px */
+        height: 1.25rem;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    nav[role="navigation"] .flex.items-center.justify-between {
+        gap: 10px;
+    }
+
   </style>
 </head>
 
@@ -141,6 +153,10 @@
           @if(session('role') === 'Admin')
           <li class="nav-item">
             <a class="nav-link d-flex align-items-center" href="{{ route('admin.users.index') }}"><i class="bi bi-people me-2"></i><span class="label">Users</span></a>
+          </li>
+
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" href="{{ route('admin.staff.index') }}"><i class="bi bi-people me-2"></i><span class="label">Staff</span></a>
           </li>
           @endif
 
