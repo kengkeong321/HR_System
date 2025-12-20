@@ -225,6 +225,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/training/{id}/status-toggle', [TrainingController::class, 'activate'])->name('training.status.toggle');
 });
 
+
+/*
+|--------------------------------------------------------------------------
+| stafftraining
+|--------------------------------------------------------------------------
+*/
+
+
+
 use App\Http\Controllers\Staff\StaffTrainingController;
 
 Route::middleware(['auth'])->group(function () {
@@ -238,8 +247,28 @@ Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeed
          
 });
 
+
+/*
+|--------------------------------------------------------------------------
+| trainingAPI
+|--------------------------------------------------------------------------
+*/
+
+
+Route::get('/my-trainings', [TrainingController::class, 'myApiExport']);
+
+
+
+
+
+
+
+
+
+
+
 Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])->group(function () {
-    // This is the specific route the sidebar is looking for
+
     Route::get('/admin/attendance/test-api', function () {
         return view('admin.attendance.api_test');
     })->name('admin.attendance.test_api');
