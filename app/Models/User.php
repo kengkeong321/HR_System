@@ -62,6 +62,11 @@ class User extends Authenticatable
 
 
 
+public function staffRecord()
+{
+   
+    return $this->hasOne(Staff::class, 'user_id', 'user_id');
+}
 
 
 

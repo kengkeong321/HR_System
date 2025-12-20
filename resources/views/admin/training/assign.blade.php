@@ -54,13 +54,10 @@
                 <select name="user_id" class="form-control mr-2" style="color: #000 !important; min-width: 300px;" required>
                     <option value="" style="color: #000;">-- Select Staff --</option>
                     @foreach($staffList as $staff)
-                        @php
-                        
-                            $extra = \DB::table('staff')->where('user_id', $staff->user_id)->first();
-                        @endphp
                         <option value="{{ $staff->user_id }}" style="color: #000;">
                             {{ $staff->user_name }} 
-                            @if($extra) ({{ $extra->email }}) @endif
+                          
+                            @if($staff->staffRecord) ({{ $staff->staffRecord->email }}) @endif
                         </option>
                     @endforeach
                 </select>
@@ -78,15 +75,12 @@
                     </thead>
                     <tbody>
                         @forelse($training->participants as $participant)
-                            @php
-                            
-                                $rowStaff = \DB::table('staff')->where('user_id', $participant->user_id)->first();
-                            @endphp
                             <tr>
                                 <td class="align-middle" style="color: #000 !important; font-weight: bold;">
                                     {{ $participant->user_name }}<br>
-                                    @if($rowStaff)
-                                        <small class="text-muted">{{ $rowStaff->email }}</small>
+                                
+                                    @if($participant->staffRecord)
+                                        <small class="text-muted">{{ $participant->staffRecord->email }}</small>
                                     @endif
                                 </td>
                                 <td class="align-middle">

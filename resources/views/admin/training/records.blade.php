@@ -23,7 +23,9 @@
                         <option value="">-- Choose a Staff Member --</option>
                         @foreach($staffList as $staff)
                             <option value="{{ $staff->user_id }}" {{ (isset($selectedUser) && $selectedUser->user_id == $staff->user_id) ? 'selected' : '' }}>
-                                {{ $staff->user_name }}
+        
+                                {{ $staff->user_name }} 
+                                ({{ $staff->staffRecord->email ?? 'No Email' }})
                             </option>
                         @endforeach
                     </select>

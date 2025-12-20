@@ -10,7 +10,6 @@
         </a>
     </div>
 
-
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">{{ $training->title }}</h6>
@@ -70,20 +69,16 @@
                         @forelse($training->participants as $participant)
                             @php 
                                 $status = $participant->pivot->status;
-                              
-                                $staffData = \DB::table('staff')->where('user_id', $participant->user_id)->first();
                             @endphp
                             <tr>
-                             
                                 <td class="align-middle font-weight-bold" style="color: #000 !important;">
-                                    {{ $staffData->full_name ?? ($participant->user_name ?? 'Unknown') }}
+                                    {{ $participant->staffRecord->full_name ?? ($participant->user_name ?? 'Unknown') }}
                                 </td>
                                 
-                              
                                 <td class="align-middle small" style="color: #000 !important;">
-                                    @if($staffData)
-                                        <i class="fas fa-envelope mr-1"></i> {{ $staffData->email }}<br>
-                                        <i class="fas fa-building mr-1 text-muted"></i> <span class="text-muted">{{ $staffData->depart_id }}</span>
+                                    @if($participant->staffRecord)
+                                        <i class="fas fa-envelope mr-1"></i> {{ $participant->staffRecord->email }}<br>
+                                        <i class="fas fa-building mr-1 text-muted"></i> <span class="text-muted">{{ $participant->staffRecord->depart_id }}</span>
                                     @else
                                         <span class="text-danger">Record Missing</span>
                                     @endif
@@ -134,6 +129,9 @@
                     <div class="media-body">
                         <h6 class="mt-0 font-weight-bold" style="color: #000;">
                             {{ $feedback->user->user_name ?? 'Unknown User' }} 
+                            @if($feedback->user && $feedback->user->staffRecord)
+                                <small class="text-muted ml-2">({{ $feedback->user->staffRecord->email }})</small>
+                            @endif
                             <small class="text-warning ml-2">{{ str_repeat('★', $feedback->rating) }}</small>
                             <small class="text-muted ml-2">({{ $feedback->created_at->format('Y-m-d') }})</small>
                         </h6>
