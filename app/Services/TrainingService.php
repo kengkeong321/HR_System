@@ -32,9 +32,12 @@ class TrainingService
 
     public function getTrainingDetails($id)
     {
-        return TrainingProgram::with(['participants', 'feedbacks.user'])
-            ->withCount('participants')
-            ->findOrFail($id);
+       return TrainingProgram::with([
+        'participants.staffRecord', 
+        'feedbacks.user.staffRecord'
+    ])
+    ->withCount('participants')
+    ->findOrFail($id);
     }
 
 
@@ -89,7 +92,7 @@ class TrainingService
 public function assignStaff($trainingId, $userId)
 {
     
-    $userExists = User::where('user_id', $userId)->exists();
+    $userExists = \App\Models\User::where('user_id', $userId)->exists();
     if (!$userExists) {
         throw new \Exception('Invalid Data: The selected Staff ID does not exist in our records.');
     }
@@ -209,7 +212,9 @@ public function activateTraining($id)
 public function getAllStaffForRecords()
 {
   
-    return User::where('role', 'Staff')->get();
+    return User::where('role', 'Staff')
+        ->with('staffRecord') 
+        ->get();
 }
 
 
