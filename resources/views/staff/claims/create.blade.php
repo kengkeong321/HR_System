@@ -8,13 +8,16 @@
             @if(session('error'))
             <div class="alert alert-danger shadow-sm mb-3 border-0 border-start border-danger border-4">
                 <i class="bi bi-exclamation-circle me-2"></i>
-                {{ session('error') }}
             </div>
             @endif
 
-            @if ($errors->has('receipt'))
-            <div class="alert alert-warning mb-3">
-                {{ $errors->first('receipt') }}
+            @if ($errors->any())
+            <div class="alert alert-danger shadow-sm mb-3 border-0 border-start border-danger border-4">
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
             @endif
 
@@ -33,7 +36,7 @@
                                 <label class="form-label fw-bold">1. Attach Receipt</label>
 
                                 <div class="mb-3">
-                                    <input type="file" name="receipt" id="receipt_input" class="form-control" accept=".jpg,.jpeg,.png,.pdf" required>
+                                    <input type="file" name="receipt" id="receipt_input" class="form-control" accept="image/*,application/pdf" required>
                                     <div class="form-text">Supported: JPG, PNG, PDF (Max 2MB)</div>
                                 </div>
 

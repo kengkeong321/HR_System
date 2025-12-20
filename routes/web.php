@@ -55,9 +55,8 @@ Route::middleware(['auth'])->group(function () {
     // --- Staff Payslip View ---
     Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
 
+    // Individual PDF Download (Reuse Admin Controller Export)
     Route::get('/payroll/export-slip/{id}', [PayrollController::class, 'exportSlip'])->name('admin.payroll.export_slip');
-    Route::get('/claims/{id}/view-receipt', [StaffClaimController::class, 'viewReceipt'])->name('claims.view_receipt');
-
 });
 
 /*
