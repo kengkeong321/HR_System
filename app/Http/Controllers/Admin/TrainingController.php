@@ -11,13 +11,15 @@ class TrainingController extends Controller
 {
 
 
+//API
 
-    public function myApiExport()
+public function myApiExport()
 {
+   
+    $trainings = TrainingProgram::select('id', 'title', 'description', 'venue', 'start_time', 'end_time', 'status')
+                                ->where('status', 'Active') 
+                                ->get();
 
-    $trainings = TrainingProgram::all();
-
-    
     return response()->json([
         'status' => 'ok',
         'timestamp' => now()->toDateTimeString(),

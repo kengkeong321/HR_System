@@ -223,6 +223,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/training/{id}/status/{userId}', [TrainingController::class, 'updateStatus'])->name('training.updateStatus');
     Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
     Route::post('/training/{id}/status-toggle', [TrainingController::class, 'activate'])->name('training.status.toggle');
+
+/*
+|---------------------------------------------------------------------------
+| training API
+|---------------------------------------------------------------------------
+*/
+    Route::get('/my-trainings', [TrainingController::class, 'myApiExport']);
 });
 
 
@@ -248,14 +255,9 @@ Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeed
 });
 
 
-/*
-|--------------------------------------------------------------------------
-| trainingAPI
-|--------------------------------------------------------------------------
-*/
 
 
-Route::get('/my-trainings', [TrainingController::class, 'myApiExport']);
+
 
 
 
