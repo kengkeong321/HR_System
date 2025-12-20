@@ -35,14 +35,10 @@
                                     <small class="text-muted">{{ $claim->created_at->format('h:i A') }}</small>
                                 </td>
                                 <td>
-                                    <span class="badge rounded-pill bg-info text-dark">
-                                        {{ $claim->claim_type }}
-                                    </span>
+                                    <span class="badge rounded-pill bg-info text-dark">{{ $claim->claim_type }}</span>
                                 </td>
                                 <td>
-                                    <span class="text-truncate d-inline-block" style="max-width: 250px;">
-                                        {{ $claim->description }}
-                                    </span>
+                                    <span class="text-truncate d-inline-block" style="max-width: 250px;">{{ $claim->description }}</span>
                                 </td>
                                 <td>
                                     <span class="fw-bold text-dark">RM {{ number_format($claim->amount, 2) }}</span>
@@ -53,10 +49,14 @@
                                     @elseif($claim->status == 'Approved')
                                     <span class="badge bg-success"><i class="bi bi-check-circle"></i> Approved</span>
                                     @else
-                                    <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rejected</span>
+                                    <span class="badge bg-danger mb-1"><i class="bi bi-x-circle"></i> Rejected</span>
+                                    @if($claim->rejection_reason)
+                                    <p class="mb-0 small text-muted italic" style="font-size: 0.8rem;">
+                                        <i class="bi bi-info-circle"></i> {{ $claim->rejection_reason }}
+                                    </p>
+                                    @endif
                                     @endif
                                 </td>
-
                                 <td class="text-end pe-4">
                                     @if($claim->receipt_path)
                                     <a href="{{ asset('storage/' . $claim->receipt_path) }}" target="_blank" class="btn btn-sm btn-outline-info">
@@ -68,12 +68,6 @@
                                 </td>
                             </tr>
                             @empty
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <i class="bi bi-inbox display-4 d-block mb-3"></i>
-                                    No claims found. Click "New Claim" to start.
-                                </td>
-                            </tr>
                             @endforelse
                         </tbody>
                     </table>
