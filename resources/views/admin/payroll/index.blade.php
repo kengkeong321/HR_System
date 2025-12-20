@@ -50,26 +50,42 @@
                     </thead>
                     <tbody>
                         @forelse($batches as $batch)
-                        <tr>
-                            <td>#{{ $batch->id }}</td>
+                        <tr class="{{ $batch->status == 'Draft' && $batch->remark ? 'table-danger' : '' }}">
+                            <td>
+                                #{{ $batch->id }}
+                                @if($batch->status == 'Draft' && $batch->remark)
+                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1" title="Rejected by Finance"></i>
+                                @endif
+                            </td>
                             <td class="fw-bold text-primary">{{ $batch->month_year }}</td>
                             <td>{{ $batch->total_staff }}</td>
                             <td class="fw-bold">RM {{ number_format($batch->total_amount, 2) }}</td>
                             <td>
                                 @if($batch->status == 'Paid')
                                     <span class="badge bg-success rounded-pill">Paid</span>
+                                @elseif($batch->status == 'Draft' && $batch->remark)
+                                    <span class="badge bg-danger rounded-pill">
+                                        <i class="bi bi-x-circle me-1"></i>Rejected
+                                    </span>
                                 @elseif($batch->status == 'Draft')
                                     <span class="badge bg-warning text-dark rounded-pill">Draft</span>
+                                @elseif($batch->status == 'L1_Approved')
+                                    <span class="badge bg-info rounded-pill">Pending Finance Review</span>
                                 @else
                                     <span class="badge bg-info text-dark rounded-pill">{{ $batch->status }}</span>
                                 @endif
                             </td>
                             <td class="small text-muted">
                                 {{ \Carbon\Carbon::parse($batch->updated_at)->diffForHumans() }}
+                                @if($batch->status == 'Draft' && $batch->remark)
+                                    <br><small class="text-danger fw-bold">Needs attention</small>
+                                @endif
                             </td>
                             <td class="text-center">
-                                <a href="{{ route('admin.payroll.batch_view', $batch->id) }}" class="btn btn-sm btn-outline-primary px-3">
-                                    <i class="bi bi-gear-fill me-1"></i> Manage
+                                <a href="{{ route('admin.payroll.batch_view', $batch->id) }}" 
+                                   class="btn btn-sm {{ $batch->status == 'Draft' && $batch->remark ? 'btn-danger' : 'btn-outline-primary' }} px-3">
+                                    <i class="bi bi-{{ $batch->status == 'Draft' && $batch->remark ? 'exclamation-circle' : 'gear' }}-fill me-1"></i> 
+                                    {{ $batch->status == 'Draft' && $batch->remark ? 'View Rejection' : 'Manage' }}
                                 </a>
                             </td>
                         </tr>

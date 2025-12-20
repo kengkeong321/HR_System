@@ -21,31 +21,30 @@ class PayrollController extends Controller
     protected $payrollService;
 
     public function __construct(PayrollService $service)
-    {
-        $this->payrollService = $service;
+{
+    $this->payrollService = $service;
 
-        $this->payrollService->registerComponent('epf', new EPFStrategy());
-        $this->payrollService->registerComponent('socso', new SocsoTableStrategy());
+    $this->payrollService->registerComponent('epf', new EPFStrategy());
+    $this->payrollService->registerComponent('socso', new SocsoTableStrategy());
 
-        $this->middleware('auth');
-        $this->middleware('role:Admin,HR,Finance');
+    $this->middleware('auth');
 
-        $this->middleware('role:Admin,HR')->only(['generateBatch', 'create', 'store', 'edit', 'update', 'approveL1']);
-        $this->middleware('role:Admin,Finance')->only(['approveL2', 'exportBankFile', 'exportReport']);
-    }
+    $this->middleware('role:Admin,HR,Finance')->except(['exportSlip']);
+
+    $this->middleware('role:Admin,HR')->only(['generateBatch', 'create', 'store', 'edit', 'update', 'approveL1']);
+    $this->middleware('role:Admin,Finance,HR')->only(['exportReport']);
+    $this->middleware('role:Admin,Finance')->only(['approveL2', 'exportBankFile']);
+}
 
     public function index()
     {
-        // 1. Fetch all batches
         $batches = PayrollBatch::orderBy('created_at', 'desc')->get();
 
-        // 2. Auto-refresh Draft batches to apply new statutory rates
         foreach ($batches as $batch) {
             if ($batch->status === 'Draft') {
                 $payrolls = Payroll::where('batch_id', $batch->id)->get();
-                
+
                 foreach ($payrolls as $payroll) {
-                    // This call uses your dynamic service to re-calculate based on CURRENT table rates
                     $this->payrollService->calculateAndSavePayroll(
                         $payroll->staff,
                         (int)$payroll->month,
@@ -60,7 +59,6 @@ class PayrollController extends Controller
                         ]
                     );
                 }
-                // Update the batch total amount after re-calculating all staff
                 $this->payrollService->updateBatchTotals($batch->id);
             }
         }
@@ -72,17 +70,15 @@ class PayrollController extends Controller
     {
         return $this->batch_view($id);
     }
-    
+
 
     public function batch_view($id)
     {
         $batch = PayrollBatch::findOrFail($id);
-        
+
         if ($batch->status === 'Draft') {
             $payrolls = Payroll::where('batch_id', $id)->get();
             foreach ($payrolls as $payroll) {
-                // Requirement 3: Consuming the Attendance Web Service
-                // We pass the data to the service which will handle the API call
                 $this->payrollService->calculateAndSavePayroll(
                     $payroll->staff,
                     (int)$payroll->month,
@@ -100,7 +96,7 @@ class PayrollController extends Controller
 
         $payrolls = Payroll::with('staff')->where('batch_id', $id)->get();
         $totals = $this->getBatchStatutoryTotals($id);
-        
+
         return view('admin.payroll.batch_view', compact('batch', 'payrolls', 'totals'));
     }
 
@@ -160,23 +156,17 @@ class PayrollController extends Controller
         }
     }
 
-  public function edit($id)
+    public function edit($id)
     {
-        // Fetch the record with relationships
         $payroll = Payroll::with(['staff.user'])->findOrFail($id);
-
-        // Pull directly from your NEW column
         $manualAmount = $payroll->manual_deduction ?? 0;
 
-        // Get system configurations
         $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
 
-        // Parse month for attendance
         $monthNumber = is_numeric($payroll->month)
             ? (int)$payroll->month
             : \Carbon\Carbon::parse($payroll->month . " 1 " . $payroll->year)->month;
 
-        // Count present days
         $daysPresent = DB::table('attendances')
             ->where('user_id', $payroll->staff->user_id)
             ->whereYear('attendance_date', $payroll->year)
@@ -184,70 +174,57 @@ class PayrollController extends Controller
             ->where('status', 'Present')
             ->count();
 
-        $totalHours = DB::table('attendances')
-            ->where('user_id', $payroll->staff->user_id)
-            ->whereYear('attendance_date', $payroll->year)
-            ->whereMonth('attendance_date', (int)$payroll->month)
-            ->where('status', 'Present')
-            ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, clock_in_time, clock_out_time)) / 3600 as hours')
-            ->value('hours') ?? 0;
-
         $allowanceCategories = DB::table('payroll_categories')->where('type', 'Allowance')->get();
         $deductionCategories = DB::table('payroll_categories')->where('type', 'Deduction')->get();
 
         return view('admin.payroll.edit', compact(
-            'payroll', 
-            'configs', 
-            'daysPresent', 
-            'allowanceCategories', 
-            'deductionCategories', 
-            'manualAmount',
-            'totalHours'
+            'payroll',
+            'configs',
+            'daysPresent',
+            'allowanceCategories',
+            'deductionCategories',
+            'manualAmount'
         ));
     }
 
-  public function update(Request $request, $id)
-{
-    $request->validate([
-        'basic_salary'     => 'required|numeric|min:0',
-        'total_allowances' => 'required|numeric|min:0',
-        'manual_deduction' => 'required|numeric|min:0', // Matches your new column
-    ]);
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'basic_salary'     => 'required|numeric|min:0',
+            'total_allowances' => 'required|numeric|min:0',
+            'manual_deduction' => 'required|numeric|min:0',
+        ]);
 
-    try {
-        DB::beginTransaction();
-        $payroll = Payroll::findOrFail($id);
+        try {
+            DB::beginTransaction();
+            $payroll = Payroll::findOrFail($id);
 
-        // We pass the data to the service. 
-        // The service now fetches the NEW 12% rate from the table.
-        $inputs = [
-            'basic_salary'      => $request->basic_salary,
-            'total_allowances'  => $request->total_allowances,
-            'manual_deduction'  => $request->manual_deduction, 
-            'allowance_remark'  => $request->allowance_remark,
-            'deduction_remark'  => $request->deduction_remark,
-        ];
+            $inputs = [
+                'basic_salary'      => $request->basic_salary,
+                'total_allowances'  => $request->total_allowances,
+                'manual_deduction'  => $request->manual_deduction,
+                'allowance_remark'  => $request->allowance_remark,
+                'deduction_remark'  => $request->deduction_remark,
+            ];
 
-        // This method recalculates the 'deduction' and 'net_salary' columns.
-        $this->payrollService->calculateAndSavePayroll(
-            $payroll->staff,
-            $payroll->month,
-            $payroll->year,
-            $payroll->batch_id,
-            $inputs
-        );
+            $this->payrollService->calculateAndSavePayroll(
+                $payroll->staff,
+                $payroll->month,
+                $payroll->year,
+                $payroll->batch_id,
+                $inputs
+            );
 
-        // Update the top Audit Summary totals
-        $this->payrollService->updateBatchTotals($payroll->batch_id);
+            $this->payrollService->updateBatchTotals($payroll->batch_id);
 
-        DB::commit();
-        return redirect()->route('admin.payroll.batch_view', $payroll->batch_id)
-            ->with('success', 'Calculation updated with new statutory rates.');
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->with('error', 'Update failed: ' . $e->getMessage());
+            DB::commit();
+            return redirect()->route('admin.payroll.batch_view', $payroll->batch_id)
+                ->with('success', 'Calculation updated with new statutory rates.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Update failed: ' . $e->getMessage());
+        }
     }
-}
 
     public function approveL1($id)
     {
@@ -259,7 +236,9 @@ class PayrollController extends Controller
 
         $batch->update([
             'status' => 'L1_Approved',
-            'rejection_reason' => null,
+            'remark' => null,
+            'rejected_by' => null,
+            'rejected_at' => null,
             'updated_at' => now()
         ]);
 
@@ -268,60 +247,153 @@ class PayrollController extends Controller
 
     public function approveL2($id)
     {
-        $batch = PayrollBatch::findOrFail($id);
+        try {
+            DB::beginTransaction();
 
-        if ($batch->status !== 'L1_Approved') {
-            return back()->with('error', 'Batch must be Level 1 Approved before Level 2 approval.');
+            $batch = PayrollBatch::findOrFail($id);
+
+            if (!in_array(Auth::user()->role, ['Finance', 'Admin'])) {
+                return back()->with('error', 'Unauthorized: Only Finance can authorize final payment.');
+            }
+
+            if ($batch->status !== 'L1_Approved') {
+                DB::rollBack();
+                return back()->with('error', 'Batch must be L1 Approved before final authorization.');
+            }
+
+            $batch->update([
+                'status' => 'Paid',
+                'approved_by' => Auth::id(),
+                'updated_at' => now()
+            ]);
+
+            Payroll::where('batch_id', $id)->update([
+                'status' => 'Paid',
+                'updated_at' => now()
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Batch Authorized. Staff can now view their payslips.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("L2 Authorization Error: " . $e->getMessage(), [
+                'batch_id' => $id,
+                'user_id' => Auth::id()
+            ]);
+            return back()->with('error', 'Final authorization failed.');
         }
-
-        DB::transaction(function () use ($batch, $id) {
-            $batch->update(['status' => 'L2_Approved']);
-            Payroll::where('batch_id', $id)->update(['status' => 'Locked_For_Payment']);
-        });
-
-        return back()->with('success', 'Level 2 (Finance) Approval granted. Batch locked for payment.');
     }
+
 
     public function reject(Request $request, $id)
     {
-        $request->validate([
-            'rejection_reason' => 'required|string|max:500'
+        $validated = $request->validate([
+            'rejection_reason' => [
+                'required',
+                'string',
+                'min:10',
+                'max:1000',
+                'regex:/^[\p{L}\p{N}\s\.\,\-\(\)]+$/u'
+            ]
+        ], [
+            'rejection_reason.required' => 'Rejection reason is required.',
+            'rejection_reason.min' => 'Rejection reason must be at least 10 characters.',
+            'rejection_reason.max' => 'Rejection reason cannot exceed 1000 characters.',
+            'rejection_reason.regex' => 'Rejection reason contains invalid characters.'
         ]);
 
-        $batch = PayrollBatch::findOrFail($id);
-
-        $batch->update([
-            'status' => 'Draft',
-            'rejection_reason' => $request->rejection_reason,
-            'updated_at' => now()
-        ]);
-
-        return redirect()->route('admin.payroll.batch_view', $id)
-            ->with('warning', 'Batch rejected and returned to Draft status.');
-    }
-
-    public function exportBankFile($id)
-    {
-        $batch = PayrollBatch::findOrFail($id);
-        $payrolls = Payroll::with('staff')->where('batch_id', $id)->get();
-
-        // Auto-mark as paid when exporting
-        if ($batch->status !== 'Paid') {
-            DB::transaction(function () use ($batch, $id) {
-                $batch->update(['status' => 'Paid']);
-                Payroll::where('batch_id', $id)->update(['status' => 'Paid']);
-            });
+        if (!is_numeric($id) || $id <= 0) {
+            abort(404);
         }
 
-        $pdf = Pdf::loadView('admin.payroll.pdf_export', compact('batch', 'payrolls'));
-        return $pdf->download('Payroll_Report_' . $batch->month_year . '.pdf');
+        if (!in_array(Auth::user()->role, ['Finance', 'Admin'])) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            try {
+                $batch = PayrollBatch::findOrFail($id);
+            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+                abort(404);
+            }
+
+            if ($batch->status !== 'L1_Approved') {
+                DB::rollBack();
+                return back()->with('error', 'This batch cannot be rejected at this time.');
+            }
+
+            $batch->update([
+                'status' => 'Draft',
+                'remark' => $validated['rejection_reason'],
+                'rejected_by' => Auth::id(),
+                'rejected_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.payroll.batch_view', $id)
+                ->with('warning', 'Batch rejected and returned to HR for corrections.');
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            Log::error('Payroll rejection database error', [
+                'batch_id' => $id,
+                'user_id' => Auth::id(),
+                'error_code' => $e->getCode(),
+                'ip_address' => $request->ip()
+            ]);
+
+            return back()->with('error', 'Unable to process rejection. Please try again.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Payroll rejection error', [
+                'batch_id' => $id,
+                'user_id' => Auth::id(),
+                'error_type' => get_class($e),
+                'ip_address' => $request->ip()
+            ]);
+
+            return back()->with('error', 'An error occurred. Please contact support if the issue persists.');
+        }
+    }
+
+    public function exportReport($id)
+    {
+        try {
+            $batch = PayrollBatch::findOrFail($id);
+
+            if (!in_array(Auth::user()->role, ['HR', 'Finance', 'Admin'])) {
+                return abort(403, 'Unauthorized access to bank reports.');
+            }
+
+            $payrolls = Payroll::with('staff')->where('batch_id', $id)->get();
+
+            if ($payrolls->isEmpty()) {
+                return back()->with('error', 'No payroll records found for this batch.');
+            }
+
+            if ($batch->status !== 'Paid') {
+                DB::transaction(function () use ($batch, $id) {
+                    $batch->update(['status' => 'Paid']);
+                    Payroll::where('batch_id', $id)->update(['status' => 'Paid']);
+                });
+            }
+
+            $pdf = Pdf::loadView('admin.payroll.pdf_export', compact('batch', 'payrolls'));
+            return $pdf->download('Payroll_Report_' . $batch->month_year . '.pdf');
+        } catch (\Exception $e) {
+            Log::error("Payroll Export Error: " . $e->getMessage());
+            return back()->with('error', 'Failed to generate the report.');
+        }
     }
 
     public function exportSlip($id)
     {
         $payroll = Payroll::with('staff')->findOrFail($id);
 
-        // Authorization check
         if (
             Auth::user()->role !== 'Admin' &&
             Auth::user()->role !== 'HR' &&
@@ -353,11 +425,10 @@ class PayrollController extends Controller
     }
 
     /**
-     * Calculate batch statutory totals from breakdown JSON
+     * Calculate batch statutory totals 
      */
     private function getBatchStatutoryTotals($batchId)
     {
-        // Use selectRaw for better performance when summing columns
         $summary = Payroll::where('batch_id', $batchId)
             ->selectRaw('
                 SUM(basic_salary) as total_basic, 
@@ -368,13 +439,14 @@ class PayrollController extends Controller
             ->first();
 
         $payrolls = Payroll::where('batch_id', $batchId)->get();
-        $epf = 0; $socso = 0; $eis = 0;
+        $epf = 0;
+        $socso = 0;
+        $eis = 0;
 
         foreach ($payrolls as $payroll) {
             $breakdown = is_string($payroll->breakdown) ? json_decode($payroll->breakdown, true) : $payroll->breakdown;
             $amounts = $breakdown['calculated_amounts'] ?? [];
-            
-            // Sum Employee portion only for Audit Verification
+
             $epf   += ($amounts['epf_employee_rm'] ?? 0);
             $socso += ($amounts['socso_employee_rm'] ?? 0);
             $eis   += ($amounts['eis_employee_rm'] ?? 0);
@@ -383,13 +455,10 @@ class PayrollController extends Controller
         return [
             'basic_salary'     => $summary->total_basic ?? 0,
             'allowances'       => $summary->total_allowances ?? 0,
-            'manual_deduction' => $summary->total_manual ?? 0, // Passed to Blade
+            'manual_deduction' => $summary->total_manual ?? 0,
             'epf_total'        => $epf,
             'socso_total'      => $socso,
             'eis_total'        => $eis,
         ];
     }
-
-    
-    
 }

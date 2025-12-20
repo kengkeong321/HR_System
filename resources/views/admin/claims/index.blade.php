@@ -174,15 +174,22 @@
 
                                                 <div class="mb-4">
                                                     <label class="small text-muted">Justification</label>
-                                                    <div class="p-3 bg-light rounded text-secondary">{{ $claim->description }}</div>
+                                                    <div class="p-3 bg-light rounded text-secondary small">{{ $claim->description }}</div>
                                                 </div>
 
                                                 @if($claim->status === 'Pending')
                                                 <hr class="my-4">
+
+                                                @php
+                                                $canAction = in_array(auth()->user()->role, ['HR', 'Admin']);
+                                                @endphp
+
+                                                @if($canAction)
+
                                                 <div class="d-grid gap-2">
                                                     <form action="{{ route('admin.claims.approve', $claim->id) }}" method="POST">
                                                         @csrf
-                                                        <button class="btn btn-success btn-lg w-100">
+                                                        <button class="btn btn-success btn-lg w-100 shadow-sm">
                                                             <i class="bi bi-check-circle-fill me-2"></i>Verify & Approve
                                                         </button>
                                                     </form>
@@ -190,6 +197,13 @@
                                                         Reject Claim
                                                     </button>
                                                 </div>
+                                                @else
+                                                <div class="alert alert-secondary text-center py-3 mb-0 border-0 shadow-sm">
+                                                    <i class="bi bi-shield-lock me-2"></i>
+                                                    <strong>View-Only Audit Mode</strong><br>
+                                                    <small class="text-muted">Finance users cannot modify claim status</small>
+                                                </div>
+                                                @endif
                                                 @endif
                                             </div>
                                         </div>
@@ -197,7 +211,6 @@
                                 </div>
                             </div>
                         </div>
-
                         {{-- Rejection --}}
                         <div class="modal fade" id="rejectModal{{ $claim->id }}" tabindex="-1">
                             <div class="modal-dialog modal-dialog-centered">

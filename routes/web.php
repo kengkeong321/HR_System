@@ -52,14 +52,11 @@ Route::middleware(['auth'])->group(function () {
     // Use PATCH for state updates to comply with Data Protection [138]
     Route::patch('/admin/leave/{id}/update', [LeaveController::class, 'adminUpdate'])->name('leave.update');
 
-    // --- Staff Payslip View ---
-    // Moved here so non-admin staff can access their own history
+        // --- Staff Payslip View ---
     Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
 
     // Individual PDF Download (Reuse Admin Controller Export)
     Route::get('/payroll/export-slip/{id}', [PayrollController::class, 'exportSlip'])->name('admin.payroll.export_slip');
-
-    
 });
 
 /*
@@ -100,7 +97,6 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::prefix('payroll')->name('payroll.')->group(function () {
         Route::get('/settings', [PayrollSettingController::class, 'index'])->name('settings.index');
         Route::post('/settings/update', [PayrollSettingController::class, 'update'])->name('settings.update');
-        
     });
     Route::resource('payroll', PayrollController::class)->except(['show', 'create', 'store']);
 
@@ -174,8 +170,8 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
     Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
 
     // claims
-    Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
-    Route::post('/claims/store', [ClaimController::class, 'store'])->name('claims.store');
+    Route::get('/claims/create', [StaffClaimController::class, 'create'])->name('claims.create');
+Route::post('/claims/store', [StaffClaimController::class, 'store'])->name('claims.store');
 
     Route::get('/claims/history', [StaffClaimController::class, 'index'])->name('claims.index');
 });

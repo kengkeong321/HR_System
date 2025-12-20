@@ -23,7 +23,7 @@
                             </span>
                         </div>
                     </div>
-                    
+
                     <div class="table-responsive">
                         <table class="table table-sm table-borderless align-middle">
                             <thead class="text-muted small text-uppercase">
@@ -67,39 +67,55 @@
         </div>
     </div>
 
+    @if(strtolower($batch->status) === 'draft' && $batch->remark)
+    <div class="alert alert-danger border-start border-4 shadow-sm mb-4">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-octagon-fill fs-4 me-3"></i>
+            <div class="flex-grow-1">
+                <h6 class="fw-bold mb-1">Payroll Rejected by Finance</h6>
+                <p class="mb-0 text-dark">{{ $batch->remark }}</p>
+                <small class="text-muted mt-2 d-block">
+                    Rejected by: {{ $batch->rejectedBy->user_name ?? 'Finance Dept' }}
+                    on {{ $batch->rejected_at ? $batch->rejected_at->format('d M Y, h:i A') : 'N/A' }}
+                </small>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="d-flex justify-content-end mb-4 bg-white p-3 rounded shadow-sm gap-2">
         @if(auth()->user()->role === 'HR' || auth()->user()->role === 'Admin')
-            <form action="{{ route('admin.payroll.approve_l1', $batch->id) }}" method="POST">
-                @csrf
-                <button type="submit" class="btn btn-info text-white" 
-                    {{ $batch->status !== 'Draft' ? 'disabled' : '' }}
-                    title="{{ $batch->status !== 'Draft' ? 'Record locked after submission' : 'Approve for Finance Review' }}">
-                    <i class="bi bi-send-check me-1"></i> Submit for Review (L1)
-                </button>
-            </form>
+        <form action="{{ route('admin.payroll.approve_l1', $batch->id) }}" method="POST">
+            @csrf
+            <button type="submit" class="btn btn-info text-white"
+                {{ $batch->status !== 'Draft' ? 'disabled' : '' }}
+                title="{{ $batch->status !== 'Draft' ? 'Record locked after submission' : 'Approve for Finance Review' }}">
+                <i class="bi bi-send-check me-1"></i> Submit for Review (L1)
+            </button>
+        </form>
         @endif
 
         @if(auth()->user()->role === 'Finance' || auth()->user()->role === 'Admin')
-            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal"
-                {{ $batch->status !== 'L1_Approved' ? 'disabled' : '' }}
-                title="{{ $batch->status !== 'L1_Approved' ? 'Must be approved by HR first' : 'Veto Batch & Return to HR' }}">
-                <i class="bi bi-x-circle me-1"></i> Reject & Return to HR
-            </button>
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal"
+            {{ $batch->status !== 'L1_Approved' ? 'disabled' : '' }}
+            title="{{ $batch->status !== 'L1_Approved' ? 'Must be approved by HR first' : 'Veto Batch & Return to HR' }}">
+            <i class="bi bi-x-circle me-1"></i> Reject & Return to HR
+        </button>
 
-            <form action="{{ route('admin.payroll.approve_l2', $batch->id) }}" method="POST">
-                @csrf
-                <button type="submit" class="btn btn-success" 
-                    {{ $batch->status !== 'L1_Approved' ? 'disabled' : '' }}
-                    title="{{ $batch->status !== 'L1_Approved' ? 'Awaiting HR Submission' : 'Confirm Audit & Authorize Disbursement' }}">
-                    <i class="bi bi-check-all me-1"></i> Authorize Payment (L2)
-                </button>
-            </form>
+        <form action="{{ route('admin.payroll.approve_l2', $batch->id) }}" method="POST">
+            @csrf
+            <button type="submit" class="btn btn-success"
+                {{ $batch->status !== 'L1_Approved' ? 'disabled' : '' }}
+                title="{{ $batch->status !== 'L1_Approved' ? 'Awaiting HR Submission' : 'Confirm Audit & Authorize Disbursement' }}">
+                <i class="bi bi-check-all me-1"></i> Authorize Payment (L2)
+            </button>
+        </form>
         @endif
 
         @if($batch->status == 'Paid')
-            <a href="{{ route('admin.payroll.export', $batch->id) }}" class="btn btn-primary" title="Export Bank File">
-                <i class="bi bi-download me-1"></i> Download Bank File
-            </a>
+        <a href="{{ route('admin.payroll.export', $batch->id) }}" class="btn btn-primary" title="Export Bank File">
+            <i class="bi bi-download me-1"></i> Download Bank File
+        </a>
         @endif
     </div>
 
@@ -131,22 +147,21 @@
                             <td class="text-end font-monospace text-success">
                                 RM {{ number_format($slip->allowances, 2) }}
                                 @if($slip->allowance_remark)
-                                    <i class="bi bi-info-circle ms-1" title="{{ $slip->allowance_remark }}"></i>
+                                <i class="bi bi-info-circle ms-1" title="{{ $slip->allowance_remark }}"></i>
                                 @endif
                             </td>
                             <td class="text-end font-monospace text-danger">RM {{ number_format($slip->deduction, 2) }}</td>
                             <td class="text-end font-monospace fw-bold text-primary">RM {{ number_format($slip->net_salary, 2) }}</td>
-                            <td class="text-center">   
+                            <td class="text-center">
                                 @if(in_array(auth()->user()->role, ['HR', 'Admin']) && $batch->status === 'Draft')
-                                    <a href="{{ route('admin.payroll.edit', $slip->id) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-pencil-square"></i> Edit
-                                    </a>
+                                <a href="{{ route('admin.payroll.edit', $slip->id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil-square"></i> Edit
+                                </a>
                                 @else
-                                    <button class="btn btn-sm btn-light border" disabled title="Finance: Audit Mode Only">
-                                        <i class="bi bi-lock-fill text-muted"></i>
-                                    </button>
+                                <button class="btn btn-sm btn-light border" disabled title="Finance: Audit Mode Only">
+                                    <i class="bi bi-lock-fill text-muted"></i>
+                                </button>
                                 @endif
-                                
                             </td>
                         </tr>
                         @endforeach
