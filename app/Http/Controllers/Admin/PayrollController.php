@@ -21,23 +21,25 @@ class PayrollController extends Controller
     protected $payrollService;
 
     public function __construct(PayrollService $service)
-{
-    $this->payrollService = $service;
+    {
+        $this->payrollService = $service;
 
-    $this->payrollService->registerComponent('epf', new EPFStrategy());
-    $this->payrollService->registerComponent('socso', new SocsoTableStrategy());
+        $this->payrollService->registerComponent('epf', new EPFStrategy());
+        $this->payrollService->registerComponent('socso', new SocsoTableStrategy());
 
-    $this->middleware('auth');
+        $this->middleware('auth');
 
-    $this->middleware('role:Admin,HR,Finance')->except(['exportSlip']);
+        $this->middleware('role:Admin,HR,Finance')->except(['exportSlip']);
 
-    $this->middleware('role:Admin,HR')->only(['generateBatch', 'create', 'store', 'edit', 'update', 'approveL1']);
-    $this->middleware('role:Admin,Finance,HR')->only(['exportReport']);
-    $this->middleware('role:Admin,Finance')->only(['approveL2', 'exportBankFile']);
-}
+        $this->middleware('role:Admin,HR')->only(['generateBatch', 'create', 'store', 'edit', 'update', 'approveL1']);
+        $this->middleware('role:Admin,Finance,HR')->only(['exportReport']);
+        $this->middleware('role:Admin,Finance')->only(['approveL2', 'exportBankFile']);
+    }
 
     public function index()
     {
+        $currentYear = now()->year;
+
         $batches = PayrollBatch::orderBy('created_at', 'desc')->get();
 
         foreach ($batches as $batch) {
@@ -63,7 +65,29 @@ class PayrollController extends Controller
             }
         }
 
-        return view('admin.payroll.index', compact('batches'));
+        foreach ($batches as $batch) {
+            if ($batch->status === 'Draft') {
+                $payrolls = Payroll::where('batch_id', $batch->id)->get();
+
+                foreach ($payrolls as $payroll) {
+                    $this->payrollService->calculateAndSavePayroll(
+                        $payroll->staff,
+                        (int)$payroll->month,
+                        (int)$payroll->year,
+                        (int)$batch->id,
+                        [
+                            'basic_salary'      => $payroll->basic_salary,
+                            'total_allowances'  => $payroll->allowances,
+                            'manual_deduction'  => $payroll->manual_deduction,
+                            'allowance_remark'  => $payroll->allowance_remark,
+                            'deduction_remark'  => $payroll->deduction_remark,
+                        ]
+                    );
+                }
+                $this->payrollService->updateBatchTotals($batch->id);
+            }
+        }
+        return view('admin.payroll.index', compact('batches', 'currentYear'));
     }
 
     public function show($id)
@@ -289,40 +313,21 @@ class PayrollController extends Controller
     public function reject(Request $request, $id)
     {
         $validated = $request->validate([
-            'rejection_reason' => [
-                'required',
-                'string',
-                'min:10',
-                'max:1000',
-                'regex:/^[\p{L}\p{N}\s\.\,\-\(\)]+$/u'
-            ]
-        ], [
-            'rejection_reason.required' => 'Rejection reason is required.',
-            'rejection_reason.min' => 'Rejection reason must be at least 10 characters.',
-            'rejection_reason.max' => 'Rejection reason cannot exceed 1000 characters.',
-            'rejection_reason.regex' => 'Rejection reason contains invalid characters.'
+            'rejection_reason' => 'required|string|min:5|max:1000'
         ]);
 
-        if (!is_numeric($id) || $id <= 0) {
-            abort(404);
-        }
-
         if (!in_array(Auth::user()->role, ['Finance', 'Admin'])) {
-            abort(403, 'Unauthorized action.');
+            return back()->with('error', 'Unauthorized: Only Finance can reject audit batches.');
         }
 
         try {
             DB::beginTransaction();
 
-            try {
-                $batch = PayrollBatch::findOrFail($id);
-            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-                abort(404);
-            }
+            $batch = PayrollBatch::findOrFail($id);
 
             if ($batch->status !== 'L1_Approved') {
                 DB::rollBack();
-                return back()->with('error', 'This batch cannot be rejected at this time.');
+                return back()->with('error', 'Current status (' . $batch->status . ') cannot be rejected.');
             }
 
             $batch->update([
@@ -330,33 +335,17 @@ class PayrollController extends Controller
                 'remark' => $validated['rejection_reason'],
                 'rejected_by' => Auth::id(),
                 'rejected_at' => now(),
-                'updated_at' => now(),
+                'updated_at' => now()
             ]);
 
             DB::commit();
 
-            return redirect()->route('admin.payroll.batch_view', $id)
-                ->with('warning', 'Batch rejected and returned to HR for corrections.');
-        } catch (\Illuminate\Database\QueryException $e) {
-            DB::rollBack();
-            Log::error('Payroll rejection database error', [
-                'batch_id' => $id,
-                'user_id' => Auth::id(),
-                'error_code' => $e->getCode(),
-                'ip_address' => $request->ip()
-            ]);
-
-            return back()->with('error', 'Unable to process rejection. Please try again.');
+            return redirect()->route('admin.payroll.index')
+                ->with('warning', 'Payroll batch rejected and returned to HR for corrections.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Payroll rejection error', [
-                'batch_id' => $id,
-                'user_id' => Auth::id(),
-                'error_type' => get_class($e),
-                'ip_address' => $request->ip()
-            ]);
-
-            return back()->with('error', 'An error occurred. Please contact support if the issue persists.');
+            Log::error('Payroll Rejection Error: ' . $e->getMessage());
+            return back()->with('error', 'System error during rejection: ' . $e->getMessage());
         }
     }
 

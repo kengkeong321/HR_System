@@ -80,10 +80,10 @@ class ClaimController extends Controller
     {
         try {
             DB::beginTransaction();
-            if (!in_array(Auth::user()->role, ['HR', 'Admin'])) {
-                return back()->with('error', 'Unauthorized: Request denied.');
-            }
 
+            if (Auth::user()->role === 'Finance') {
+                abort(403, 'Finance users are restricted to View Only mode.');
+            }
             $claim = Claim::findOrFail($id);
 
             $request->validate([
@@ -142,13 +142,16 @@ class ClaimController extends Controller
 
     public function reject(Request $request, $id)
     {
+        if (Auth::user()->role === 'Finance') {
+            abort(403, 'Finance users are restricted to View Only mode.');
+        }
+
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500'
+        ]);
+
         try {
             $claim = Claim::findOrFail($id);
-            $this->authorize('verify', $claim);
-
-            $request->validate([
-                'rejection_reason' => 'required|string|min:5|max:500'
-            ]);
 
             $claim->update([
                 'status' => 'Rejected',
@@ -157,10 +160,9 @@ class ClaimController extends Controller
                 'updated_at' => now()
             ]);
 
-            return redirect()->route('admin.claims.index')->with('warning', 'Claim rejected.');
+            return redirect()->route('admin.claims.index')->with('warning', 'Claim has been rejected.');
         } catch (\Exception $e) {
-            Log::error("Claim Rejection Failure: " . $e->getMessage());
-            return back()->with('error', 'Error: Request could not be completed.');
+            return back()->with('error', 'Something went wrong: ' . $e->getMessage());
         }
     }
 
