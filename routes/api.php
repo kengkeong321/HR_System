@@ -5,6 +5,7 @@ use App\Models\Attendance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Staff;
 
 Route::get('/attendance/summary', function (Request $request) {
     
@@ -62,5 +63,12 @@ Route::get('/attendance', function (Illuminate\Http\Request $request) {
             'total_hours' => round($totalHours, 4),
             'employment_type' => $userData->employment_type ?? 'N/A'
         ]
+    ]);
+});
+
+Route::get('/staff', function () {
+    return response()->json([
+        'timestamp' => now()->format('Y-m-d H:i:s'),
+        'data' => Staff::with('user')->get()
     ]);
 });
