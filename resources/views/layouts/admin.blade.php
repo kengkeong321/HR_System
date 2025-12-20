@@ -185,7 +185,7 @@
           <li class="nav-item">
     <a class="nav-link d-flex align-items-center {{ request()->routeIs('training.records') ? 'active' : '' }}" href="{{ route('training.records') }}">
         <i class="bi bi-person-badge me-2"></i>
-        <span class="label">Staff Records</span>
+        <span class="label">Training Records</span>
     </a>
 </li>
 
