@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\View;
+use App\Models\Claim;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,22 +34,18 @@ class AppServiceProvider extends ServiceProvider
     
     public function boot(): void
     {
-        View::composer('*', function ($view) {
+        View::composer('layouts.staff', function ($view) {
+        if (Auth::check() && Auth::user()->staff) {
+            $staffId = Auth::user()->staff->staff_id;
+            
+            $sidebarRejectionCount = Claim::where('staff_id', $staffId)
+                ->where('status', 'Rejected')
+                ->where('is_seen', 0)
+                ->count();
 
-            if (Auth::check()) {
-
-
-                $user = Auth::user();
-
-                if ($user->staff) {
-                    $count = \App\Models\Claim::where('staff_id', $user->staff->staff_id)
-                        ->where('status', 'Rejected')
-                        ->count();
-
-                    $view->with('sidebarRejectionCount', $count);
-                }
-            }
-        });
+            $view->with('sidebarRejectionCount', $sidebarRejectionCount);
+        }
+    });
 
         Gate::policy(\App\Models\Payroll::class, \App\Policies\PayrollPolicy::class);
         \App\Models\Attendance::observe(\App\Observers\AttendanceObserver::class);

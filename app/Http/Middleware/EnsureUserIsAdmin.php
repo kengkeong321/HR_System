@@ -12,26 +12,31 @@ class EnsureUserIsAdmin
     {
         $userId = $request->session()->get('user_id');
 
-        //handle not logged in
-        if (! $userId) {
-            $request->session()->flush();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
+        // 1. Handle not logged in
+        if (!$userId) {
+            $this->clearSession($request);
             return redirect()->route('login')->withErrors(['auth' => 'Please login first.']);
         }
 
-        //handle not admin
         $user = User::find($userId);
 
-        if (! $user || ! in_array($user->role, ['Admin'])) {
-            $request->session()->flush();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+        // 2. Updated: Allow Admin, HR, and Finance
+        $allowedRoles = ['Admin', 'HR', 'Finance'];
 
-            return redirect()->route('login')->withErrors(['access' => 'Admin access required']);
+        if (!$user || !in_array($user->role, $allowedRoles)) {
+            // If the user exists but their role isn't in our list, block them
+            // Note: You might NOT want to clearSession here if you want them to stay 
+            // logged in as Staff but just deny them this specific page.
+            return redirect()->route('login')->withErrors(['access' => 'Authorized personnel only.']);
         }
 
         return $next($request);
+    }
+
+    private function clearSession(Request $request)
+    {
+        $request->session()->flush();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 }

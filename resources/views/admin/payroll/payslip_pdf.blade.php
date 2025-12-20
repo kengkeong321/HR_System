@@ -1,20 +1,70 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Payslip - {{ $payroll->staff->full_name }}</title>
     <style>
-        body { font-family: sans-serif; font-size: 12px; color: #333; }
-        .header { text-align: center; border-bottom: 2px solid #003366; padding-bottom: 10px; margin-bottom: 20px; }
-        .uni-name { font-size: 18px; font-weight: bold; color: #003366; }
-        .section-title { background: #f4f4f4; padding: 5px; font-weight: bold; margin-top: 15px; border-left: 4px solid #003366; }
-        table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-        td { padding: 5px; vertical-align: top; }
-        .text-right { text-align: right; }
-        .bold { font-weight: bold; }
-        .footer { margin-top: 30px; font-size: 10px; text-align: center; color: #777; }
-        .total-row { border-top: 1px solid #ddd; font-weight: bold; background: #fafafa; }
+        body {
+            font-family: sans-serif;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .uni-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #003366;
+        }
+
+        .section-title {
+            background: #f4f4f4;
+            padding: 5px;
+            font-weight: bold;
+            margin-top: 15px;
+            border-left: 4px solid #003366;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+        }
+
+        td {
+            padding: 5px;
+            vertical-align: top;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 10px;
+            text-align: center;
+            color: #777;
+        }
+
+        .total-row {
+            border-top: 1px solid #ddd;
+            font-weight: bold;
+            background: #fafafa;
+        }
     </style>
 </head>
+
 <body>
     <div class="header">
         <div class="uni-name">TAR UMT PAYROLL SERVICE</div>
@@ -53,7 +103,9 @@
     </table>
 
     {{-- DEDUCTIONS SECTION (Snapshot Pattern) --}}
-    @php $data = json_decode($payroll->breakdown, true); @endphp
+    @php
+    $breakdown = is_string($payroll->breakdown) ? json_decode($payroll->breakdown, true) : $payroll->breakdown;
+    @endphp
     <div class="section-title">DEDUCTIONS (STATUTORY & MANUAL)</div>
     <table>
         <tr>
@@ -99,4 +151,5 @@
         Generated on: {{ date('d-M-Y H:i:s') }} | Transaction ID: {{ strtoupper(uniqid('TAR-')) }}
     </div>
 </body>
+
 </html>

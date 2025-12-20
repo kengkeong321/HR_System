@@ -11,14 +11,35 @@ class StaffClaimController extends Controller
 {
     public function index()
     {
-        $staff = Auth::user()->staff;
+        $user = Auth::user();
 
-        $claims = Claim::where('staff_id', $staff->staff_id)
+        if (!$user || !$user->staff) {
+            return redirect()->back()->with('error', 'Staff profile not found.');
+        }
+
+        $staffId = $user->staff->staff_id;
+
+        \App\Models\Claim::where('staff_id', $staffId)
+            ->where('status', 'Rejected')
+            ->where('is_seen', 0)
+            ->update(['is_seen' => 1]);
+
+        $claims = \App\Models\Claim::with('staff')
+            ->where('staff_id', $staffId)
             ->orderBy('created_at', 'desc')
             ->get();
 
         return view('staff.claims.index', compact('claims'));
     }
+    public function create()
+    {
+        $categories = \App\Models\ClaimCategory::where('status', 'Active')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return view('staff.claims.create', compact('categories'));
+    }
+
 
     public function myHistory()
     {
