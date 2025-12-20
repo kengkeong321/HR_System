@@ -190,6 +190,7 @@
                                                 <div class="d-grid gap-2">
                                                     <form action="{{ route('admin.claims.approve', $claim->id) }}" method="POST">
                                                         @csrf
+                                                        <input type="hidden" name="approved_amount" value="{{ $claim->amount }}">
                                                         <button class="btn btn-success btn-lg w-100 shadow-sm">
                                                             <i class="bi bi-check-circle-fill me-2"></i>Verify & Approve
                                                         </button>
