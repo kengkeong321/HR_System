@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use App\Models\Payroll;
+use App\Models\Staff;
 
 class PayslipController extends Controller
 {
@@ -16,7 +18,11 @@ class PayslipController extends Controller
                 ->with('error', 'No staff profile found for this account.');
         }
 
-        $payrolls = $user->staff->payrolls()->orderBy('year', 'desc')->orderBy('month', 'desc')->get();
+        $payrolls = Payroll::where('staff_id', $user->staff->staff_id)
+        ->where('status', 'Paid') 
+        ->orderBy('year', 'desc')
+        ->orderBy('month', 'desc')
+        ->get();
 
         return view('staff.payroll.my_payslips', compact('payrolls'));
     }

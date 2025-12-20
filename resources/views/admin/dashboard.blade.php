@@ -18,6 +18,7 @@
         <li><a href="{{ route('admin.courses.index') }}">Manage Courses</a></li>
         <li><a href="{{ url('/admin/attendance') }}">Mark Attendance</a></li>
            <li><a href="{{ route('training.index') }}">Manage Training Programs</a></li>
+        <li><a href="{{ route('admin.staff.index') }}">Manage Staff</a></li>
       </ul>
     </div>
   </div>
