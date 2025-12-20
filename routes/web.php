@@ -294,4 +294,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // 3. Resource routes (index, create, store, etc.)
     Route::resource('staff', StaffController::class);
+
 });
+
+Route::get('/admin/staff-api-test', function () {
+        return view('admin.staff.staff-test');
+    })->middleware(['auth']); // Requirement [23]: Ensures only logged-in users see this
