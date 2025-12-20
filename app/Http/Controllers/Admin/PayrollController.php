@@ -286,79 +286,49 @@ class PayrollController extends Controller
     }
 
 
-    public function reject(Request $request, $id)
-    {
-        $validated = $request->validate([
-            'rejection_reason' => [
-                'required',
-                'string',
-                'min:10',
-                'max:1000',
-                'regex:/^[\p{L}\p{N}\s\.\,\-\(\)]+$/u'
-            ]
-        ], [
-            'rejection_reason.required' => 'Rejection reason is required.',
-            'rejection_reason.min' => 'Rejection reason must be at least 10 characters.',
-            'rejection_reason.max' => 'Rejection reason cannot exceed 1000 characters.',
-            'rejection_reason.regex' => 'Rejection reason contains invalid characters.'
+public function reject(Request $request, $id)
+{
+    // 1. Validation (Matches your Blade textarea name)
+    $validated = $request->validate([
+        'rejection_reason' => 'required|string|min:5|max:1000'
+    ]);
+
+    // 2. Access Control (Sarah is 'Finance', this allows her)
+    if (!in_array(auth()->user()->role, ['Finance', 'Admin'])) {
+        return back()->with('error', 'Unauthorized: Only Finance can reject audit batches.');
+    }
+
+    try {
+        DB::beginTransaction();
+
+        $batch = PayrollBatch::findOrFail($id);
+
+        // 3. Status Check: Must be L1_Approved to be rejected by Finance
+        if ($batch->status !== 'L1_Approved') {
+            DB::rollBack();
+            return back()->with('error', 'Current status (' . $batch->status . ') cannot be rejected.');
+        }
+
+        // 4. Reset to Draft so HR can edit again
+        $batch->update([
+            'status' => 'Draft',
+            'remark' => $validated['rejection_reason'],
+            'rejected_by' => auth()->id(),
+            'rejected_at' => now(),
+            'updated_at' => now()
         ]);
 
-        if (!is_numeric($id) || $id <= 0) {
-            abort(404);
-        }
+        DB::commit();
 
-        if (!in_array(Auth::user()->role, ['Finance', 'Admin'])) {
-            abort(403, 'Unauthorized action.');
-        }
+        return redirect()->route('admin.payroll.index')
+            ->with('warning', 'Payroll batch rejected and returned to HR for corrections.');
 
-        try {
-            DB::beginTransaction();
-
-            try {
-                $batch = PayrollBatch::findOrFail($id);
-            } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-                abort(404);
-            }
-
-            if ($batch->status !== 'L1_Approved') {
-                DB::rollBack();
-                return back()->with('error', 'This batch cannot be rejected at this time.');
-            }
-
-            $batch->update([
-                'status' => 'Draft',
-                'remark' => $validated['rejection_reason'],
-                'rejected_by' => Auth::id(),
-                'rejected_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            DB::commit();
-
-            return redirect()->route('admin.payroll.batch_view', $id)
-                ->with('warning', 'Batch rejected and returned to HR for corrections.');
-        } catch (\Illuminate\Database\QueryException $e) {
-            DB::rollBack();
-            Log::error('Payroll rejection database error', [
-                'batch_id' => $id,
-                'user_id' => Auth::id(),
-                'error_code' => $e->getCode(),
-                'ip_address' => $request->ip()
-            ]);
-
-            return back()->with('error', 'Unable to process rejection. Please try again.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Payroll rejection error', [
-                'batch_id' => $id,
-                'user_id' => Auth::id(),
-                'error_type' => get_class($e),
-                'ip_address' => $request->ip()
-            ]);
-
-            return back()->with('error', 'An error occurred. Please contact support if the issue persists.');
-        }
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Payroll Rejection Error: ' . $e->getMessage());
+        return back()->with('error', 'System error during rejection: ' . $e->getMessage());
     }
+}
 
     public function exportReport($id)
     {
