@@ -179,33 +179,25 @@ public function index(Request $request)
         $currentTime = now()->toTimeString();
         $action = $request->input('action_type');
 
-        // 1. Prevent Duplicates: Check if a record exists for today
         $record = \App\Models\Attendance::where('user_id', $userId)
             ->where('attendance_date', $today)
             ->first();
 
-        // LOGIC FOR CLOCK IN
         if ($action == 'in') {
             if ($record) {
                 return back()->with('error', 'You have already clocked in today!');
             }
 
-            /** * OBSERVER PATTERN IMPLEMENTATION:
-             * We save the status as 'Present' by default. 
-             * Once 'create' is called, the AttendanceObserver will automatically 
-             * check the time and update the status to 'Late' if necessary.
-             */
             \App\Models\Attendance::create([
                 'user_id' => $userId,
                 'attendance_date' => $today,
                 'clock_in_time' => $currentTime,
-                'status' => 'Present', // The Observer will override this if late
+                'status' => 'Present', 
             ]);
 
             return back()->with('success', 'Clock-in recorded successfully!');
         }
 
-        // LOGIC FOR CLOCK OUT
         if ($action == 'out') {
             if (!$record) {
                 return back()->with('error', 'No clock-in record found. Please clock in first!');
@@ -215,7 +207,6 @@ public function index(Request $request)
                 return back()->with('error', 'You have already clocked out today!');
             }
 
-            // Data Protection [138]: Updating via server-side logic, not URL parameters
             $record->update([
                 'clock_out_time' => $currentTime
             ]);
