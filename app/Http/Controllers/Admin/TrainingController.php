@@ -9,6 +9,22 @@ use App\Models\User;
 
 class TrainingController extends Controller
 {
+
+
+
+    public function myApiExport()
+{
+
+    $trainings = TrainingProgram::all();
+
+    
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toDateTimeString(),
+        'data' => $trainings
+    ]);
+}
+    
        //===========================================================================================
     private function isAdmin() {
         $user = User::where('user_id', session('user_id'))->first();
