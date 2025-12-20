@@ -259,18 +259,10 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-
-
-
-
-
-
-Route::middleware(['auth', \App\Http\Middleware\EnsureUserIsAdmin::class])->group(function () {
-
     Route::get('/admin/attendance/test-api', function () {
         return view('admin.attendance.api_test');
     })->name('admin.attendance.test_api');
-});
+
 
 /*
 |--------------------------------------------------------------------------
