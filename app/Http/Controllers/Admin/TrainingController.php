@@ -11,7 +11,7 @@ class TrainingController extends Controller
 {
 
 
-
+//API
 
 public function myApiExport()
 {

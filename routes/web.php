@@ -225,9 +225,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/training/{id}/status-toggle', [TrainingController::class, 'activate'])->name('training.status.toggle');
 
 /*
-|--------------------------------------------------------------------------
+|---------------------------------------------------------------------------
 | training API
-|--------------------------------------------------------------------------
+|---------------------------------------------------------------------------
 */
     Route::get('/my-trainings', [TrainingController::class, 'myApiExport']);
 });
