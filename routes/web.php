@@ -255,7 +255,7 @@ Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeed
 */
 
 
-Route::get('/my-trainings', [\App\Http\Controllers\Admin\TrainingController::class, 'myApiExport']);
+Route::get('/my-trainings', [TrainingController::class, 'myApiExport']);
 
 
 
