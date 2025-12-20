@@ -15,12 +15,13 @@ Route::get('/attendance/summary', function (Request $request) {
         'data' => Attendance::all() 
     ]);
 });
+
 Route::get('/attendance', function (Request $request) {
     $userId = $request->query('user_id');
     $month = $request->query('month');
     $year = $request->query('year');
 
-    // Querying the attendances table from your phpMyAdmin screenshot
+    // Fetch the raw hours from the database based on your screenshot
     $totalHours = DB::table('attendances')
         ->where('user_id', $userId)
         ->whereYear('attendance_date', $year)
@@ -30,7 +31,14 @@ Route::get('/attendance', function (Request $request) {
         ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, clock_in_time, clock_out_time)) / 3600 as hours')
         ->value('hours') ?? 0;
 
+    // Fulfilling the requirement for structured data exchange
     return response()->json([
-        'total_hours' => (float)$totalHours
+        'status' => 'ok',                               // Status indicator
+        'timestamp' => now()->toDateTimeString(),       // Current timestamp
+        'data' => [
+            'user_id' => $userId,
+            'total_hours' => round($totalHours, 4),     // Raw data
+            'employment_type' => 'Part-Time'
+        ]
     ]);
 });
