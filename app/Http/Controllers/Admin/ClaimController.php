@@ -139,31 +139,30 @@ class ClaimController extends Controller
             ], 500);
         }
     }
+public function reject(Request $request, $id)
+{
+    // 1. Validation
+    $request->validate([
+        'rejection_reason' => 'required|string|max:500'
+    ]);
 
-    public function reject(Request $request, $id)
-    {
-        try {
-            $claim = Claim::findOrFail($id);
-            $this->authorize('verify', $claim);
+    try {
+        $claim = Claim::findOrFail($id);
 
-            $request->validate([
-                'rejection_reason' => 'required|string|min:5|max:500'
-            ]);
+        // 2. Update status and log who rejected it
+        $claim->update([
+            'status' => 'Rejected',
+            'rejection_reason' => $request->rejection_reason,
+            'rejected_by' => Auth::user()->user_id, // Links to your user_id column
+            'updated_at' => now()
+        ]);
 
-            $claim->update([
-                'status' => 'Rejected',
-                'rejection_reason' => $request->rejection_reason,
-                'rejected_by' => Auth::user()->user_id,
-                'updated_at' => now()
-            ]);
-
-            return redirect()->route('admin.claims.index')->with('warning', 'Claim rejected.');
-        } catch (\Exception $e) {
-            Log::error("Claim Rejection Failure: " . $e->getMessage());
-            return back()->with('error', 'Error: Request could not be completed.');
-        }
+        return redirect()->route('admin.claims.index')->with('warning', 'Claim has been rejected.');
+        
+    } catch (\Exception $e) {
+        return back()->with('error', 'Something went wrong: ' . $e->getMessage());
     }
-
+}
     private function refreshNetSalary($payroll)
     {
         $statutoryTotal = $this->getStatutoryTotal($payroll);

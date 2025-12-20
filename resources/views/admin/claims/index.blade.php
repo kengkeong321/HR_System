@@ -110,6 +110,7 @@
                                 <div class="d-flex justify-content-center gap-2">
                                     <form action="{{ route('admin.claims.approve', $claim->id) }}" method="POST">
                                         @csrf
+                                        <input type="hidden" name="approved_amount" value="{{ $claim->amount }}">
                                         <button type="submit" class="btn btn-sm btn-success shadow-sm" title="Approve">
                                             <i class="bi bi-check-lg"></i>
                                         </button>
@@ -255,4 +256,12 @@
         </div>
     </div>
 </div>
+
+@if(session('warning'))
+    <div class="alert alert-warning alert-dismissible fade show border-0 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        {{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+@endif
 @endsection
