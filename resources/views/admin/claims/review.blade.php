@@ -1,11 +1,13 @@
 <div class="row g-0 h-100">
-    {{-- view receipt --}}
+    {{-- Secure View Receipt Section --}}
     <div class="col-lg-7 bg-dark d-flex align-items-center justify-content-center position-relative" style="min-height: 500px;">
         @if($claim->receipt_path)
+            @php $secureViewUrl = route('claims.view_receipt', $claim->id); @endphp
+
             @if(Str::endsWith($claim->receipt_path, '.pdf'))
-                <iframe src="{{ asset('storage/' . $claim->receipt_path) }}" class="w-100 h-100 border-0" style="min-height: 500px;"></iframe>
+                <iframe src="{{ $secureViewUrl }}" class="w-100 h-100 border-0" style="min-height: 500px;"></iframe>
             @else
-                <img src="{{ asset('storage/' . $claim->receipt_path) }}" class="img-fluid" style="max-height: 100%; max-width: 100%;">
+                <img src="{{ $secureViewUrl }}" class="img-fluid" style="max-height: 100%; max-width: 100%;">
             @endif
         @else
             <div class="text-white opacity-50 text-center">
@@ -60,28 +62,26 @@
 
             {{-- actions --}}
             <hr>
-            <div class="d-grid gap-2">
-                <button type="button" onclick="submitApproval('{{ $claim->id }}')" class="btn btn-success btn-lg">
-                    <i class="bi bi-check-lg me-2"></i>Confirm & Approve
-                </button>
-                <button type="button" onclick="openRejectModal('{{ $claim->id }}')" class="btn btn-outline-danger">
-                    Reject Claim
-                </button>
-            </div>
+            @if(Auth::user()->role === 'Finance')
+                {{-- [78] View Only Mode for Finance --}}
+                <div class="alert alert-info border-0 shadow-sm">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>View Only Mode:</strong> Finance users can review claim details but cannot approve or reject.
+                </div>
+            @else
+                {{-- [78] Full Action Mode for Admin/HR --}}
+                <div class="d-grid gap-2">
+                    <button type="button" onclick="submitApproval('{{ $claim->id }}')" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-lg me-2"></i>Confirm & Approve
+                    </button>
+                    <button type="button" onclick="openRejectModal('{{ $claim->id }}')" class="btn btn-outline-danger">
+                        Reject Claim
+                    </button>
+                </div>
+            @endif
         </div>
     </div>
 </div>
-
-{{-- rejection --}}
-<div class="modal fade" id="rejectModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form action="{{ route('admin.claims.reject', $claim->id) }}" method="POST">
-                @csrf
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">Reject Claim #{{ $claim->id }}</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
                 <div class="modal-body">
                     <input type="hidden" name="claim_id" id="modal_claim_id" value="{{ $claim->id }}">
                     <div class="mb-3">

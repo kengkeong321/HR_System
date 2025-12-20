@@ -52,11 +52,12 @@ Route::middleware(['auth'])->group(function () {
     // Use PATCH for state updates to comply with Data Protection [138]
     Route::patch('/admin/leave/{id}/update', [LeaveController::class, 'adminUpdate'])->name('leave.update');
 
-        // --- Staff Payslip View ---
+    // --- Staff Payslip View ---
     Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
 
-    // Individual PDF Download (Reuse Admin Controller Export)
     Route::get('/payroll/export-slip/{id}', [PayrollController::class, 'exportSlip'])->name('admin.payroll.export_slip');
+    Route::get('/claims/{id}/view-receipt', [StaffClaimController::class, 'viewReceipt'])->name('claims.view_receipt');
+
 });
 
 /*
@@ -143,8 +144,6 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::post('departments/page', [\App\Http\Controllers\Admin\DepartmentController::class, 'page'])->name('departments.page');
     Route::post('courses/page', [\App\Http\Controllers\Admin\CourseController::class, 'page'])->name('courses.page');
     Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
-
-
 });
 
 // Positions API (Active only) - returns active positions list for dropdowns
@@ -171,7 +170,7 @@ Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () 
 
     // claims
     Route::get('/claims/create', [StaffClaimController::class, 'create'])->name('claims.create');
-Route::post('/claims/store', [StaffClaimController::class, 'store'])->name('claims.store');
+    Route::post('/claims/store', [StaffClaimController::class, 'store'])->name('claims.store');
 
     Route::get('/claims/history', [StaffClaimController::class, 'index'])->name('claims.index');
 });
@@ -200,12 +199,12 @@ Route::post('/_sidebar/toggle', function (\Illuminate\Http\Request $request) {
 use App\Http\Controllers\Admin\TrainingController;
 
 Route::middleware(['auth'])->group(function () {
-    
+
     //(Static Routes) ---
     Route::get('/training', [TrainingController::class, 'index'])->name('training.index');
     Route::get('/training/create/new', [TrainingController::class, 'create'])->name('training.create');
-    
-    
+
+
     Route::get('/training/records', [TrainingController::class, 'records'])->name('training.records');
     Route::post('/training/records', [TrainingController::class, 'records']);
 
@@ -213,7 +212,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/training/{id}', [TrainingController::class, 'show'])->name('training.show');
     Route::get('/training/{id}/edit', [TrainingController::class, 'edit'])->name('training.edit');
     Route::get('/training/{id}/assign', [App\Http\Controllers\Admin\TrainingController::class, 'assignPage'])->name('training.assignPage');
-    
+
     // (Actions) ---
     Route::post('/training', [TrainingController::class, 'store'])->name('training.store');
     Route::put('/training/{id}', [TrainingController::class, 'update'])->name('training.update');
@@ -224,7 +223,7 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/training/{id}/detach/{userId}', [TrainingController::class, 'detachParticipant'])->name('training.detach');
     Route::post('/training/{id}/status-toggle', [TrainingController::class, 'activate'])->name('training.status.toggle');
 
-/*
+    /*
 |---------------------------------------------------------------------------
 | training API
 |---------------------------------------------------------------------------
@@ -244,14 +243,12 @@ Route::middleware(['auth'])->group(function () {
 use App\Http\Controllers\Staff\StaffTrainingController;
 
 Route::middleware(['auth'])->group(function () {
-   
+
     Route::get('/staff/my-trainings', [StaffTrainingController::class, 'index'])
-         ->name('staff.trainings.index');
+        ->name('staff.trainings.index');
 
-Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeedback'])
-         ->name('staff.feedback.store');
-
-         
+    Route::post('/staff/feedback/store', [StaffTrainingController::class, 'storeFeedback'])
+        ->name('staff.feedback.store');
 });
 
 
@@ -294,9 +291,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // 3. Resource routes (index, create, store, etc.)
     Route::resource('staff', StaffController::class);
-
 });
 
 Route::get('/admin/staff-api-test', function () {
-        return view('admin.staff.staff-test');
-    })->middleware(['auth']); // Requirement [23]: Ensures only logged-in users see this
+    return view('admin.staff.staff-test');
+})->middleware(['auth']); // Requirement [23]: Ensures only logged-in users see this
