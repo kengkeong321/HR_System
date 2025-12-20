@@ -45,7 +45,7 @@ class StaffController extends Controller
     {
         // 1. Validate the incoming request
         $validatedData = $request->validate([
-            'full_name'       => 'required|string|max:100',
+            'full_name'       => 'required|string',
             'email'           => 'required|email|unique:staff,email',
             'depart_id'       => 'nullable',
             'position'        => 'nullable',
@@ -130,8 +130,8 @@ class StaffController extends Controller
             'employment_type' => 'required|in:Full-Time,Part-Time,Contract,Intern',
             'basic_salary'    => 'required|numeric',
             'hourly_rate'     => 'nullable|numeric',
-            'status'          => 'required|in:Active,Inactive', // For the user table
-            'position' => 'nullable|string|exists:position,name', 
+            'status'          => 'required|in:Active,Inactive', 
+            'position'        => 'nullable|string|exists:position,name', 
         ]);
 
         try {

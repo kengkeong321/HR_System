@@ -22,9 +22,11 @@
 
     <div class="mb-3">
       <label class="form-label">Role</label>
-      <select name="role" class="form-select @error('role') is-invalid @enderror">
-        <option value="Admin" {{ $user->role === 'Admin' ? 'selected' : '' }}>Admin</option>
-        <option value="Staff" {{ $user->role === 'Staff' ? 'selected' : '' }}>Staff</option>
+      <select name="role" id="roleSelect" class="form-select @error('role') is-invalid @enderror">
+        <option value="Admin" {{ (old('role', $user->role) === 'Admin') ? 'selected' : '' }}>Admin</option>
+        <option value="Staff" {{ (old('role', $user->role) === 'Staff') ? 'selected' : '' }}>Staff</option>
+        <option value="HR" {{ (old('role', $user->role) === 'HR') ? 'selected' : '' }}>HR</option>
+        <option value="Finance" {{ (old('role', $user->role) === 'Finance') ? 'selected' : '' }}>Finance</option>
       </select>
       @error('role') <div class="invalid-feedback">{{ $message }}</div> @enderror
     </div>
