@@ -20,17 +20,13 @@ class AttendanceController extends Controller
 // Update your index method
 public function index(Request $request)
 {
-    // 1. Optimized Eager Loading (reduces database hits)
-    $query = \App\Models\Attendance::with('user');
+    $query = \App\Models\Attendance::with(['user.staff']); 
 
     if ($request->has('user_id')) {
         $query->where('user_id', $request->user_id);
     }
 
     $attendances = $query->orderBy('attendance_date', 'desc')->get();
-
-    // 2. Optimized Service Consumption with Cache
-    // This stores the position names for 10 minutes so it doesn't call the API every time
     $posMap = Cache::remember('positions_map', 600, function () {
         try {
             // Set a 3-second timeout so the page doesn't hang forever
