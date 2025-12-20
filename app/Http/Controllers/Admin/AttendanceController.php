@@ -60,7 +60,7 @@ public function index(Request $request)
         if ($search) {
             $users = \App\Models\User::where('user_name', 'LIKE', "%{$search}%")
                 ->where('status', 'Active')
-                ->where('role', 'Staff')
+                ->whereIn('role', ['Staff', 'HR', 'Finance'])
                 ->get();
         }
 
