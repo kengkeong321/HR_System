@@ -21,18 +21,19 @@ class StaffClaimController extends Controller
 
         $staffId = $user->staff->staff_id;
 
-        \App\Models\Claim::where('staff_id', $staffId)
+        Claim::where('staff_id', $staffId)
             ->where('status', 'Rejected')
             ->where('is_seen', 0)
             ->update(['is_seen' => 1]);
 
-        $claims = \App\Models\Claim::with('staff')
+        $claims = Claim::with('staff')
             ->where('staff_id', $staffId)
             ->orderBy('created_at', 'desc')
             ->get();
 
         return view('staff.claims.index', compact('claims'));
     }
+
     public function create()
     {
         $categories = \App\Models\ClaimCategory::where('status', 'Active')
@@ -58,9 +59,9 @@ class StaffClaimController extends Controller
 
         return view('staff.claims.index', compact('claims'));
     }
-   public function store(Request $request)
+
+    public function store(Request $request)
     {
-        // 1. Validate based on your claim_categories table
         $request->validate([
             'claim_type' => 'required|string|max:255',
             'description' => 'required|string|max:255',
@@ -68,16 +69,13 @@ class StaffClaimController extends Controller
             'receipt' => 'nullable|file|mimes:jpeg,png,pdf|max:2048',
         ]);
 
-        // 2. Get the staff_id linked to the logged-in user
         $staff = Staff::where('user_id', Auth::id())->firstOrFail();
 
-        // 3. Handle file upload
         $path = null;
         if ($request->hasFile('receipt')) {
             $path = $request->file('receipt')->store('receipts', 'public');
         }
 
-        // 4. Create record using your specific column names (staff_id, receipt_path)
         Claim::create([
             'staff_id' => $staff->staff_id,
             'claim_type' => $request->claim_type,
@@ -89,5 +87,27 @@ class StaffClaimController extends Controller
         ]);
 
         return redirect()->route('staff.claims.index')->with('success', 'Claim submitted successfully!');
+    }
+
+    public function viewReceipt($id)
+    {
+        $claim = \App\Models\Claim::findOrFail($id);
+        $user = Auth::user();
+
+        $isOwner = $user->staff && $user->staff->staff_id === $claim->staff_id;
+
+        $isManagement = in_array($user->role, ['Admin', 'HR', 'Finance']);
+
+        if (!$isOwner && !$isManagement) {
+            abort(403, 'Unauthorized access to this receipt.');
+        }
+
+        $path = storage_path('app/public/' . $claim->receipt_path);
+
+        if (!file_exists($path)) {
+            abort(404, 'File not found.');
+        }
+
+        return response()->file($path);
     }
 }

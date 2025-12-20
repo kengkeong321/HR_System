@@ -21,23 +21,25 @@ class PayrollController extends Controller
     protected $payrollService;
 
     public function __construct(PayrollService $service)
-{
-    $this->payrollService = $service;
+    {
+        $this->payrollService = $service;
 
-    $this->payrollService->registerComponent('epf', new EPFStrategy());
-    $this->payrollService->registerComponent('socso', new SocsoTableStrategy());
+        $this->payrollService->registerComponent('epf', new EPFStrategy());
+        $this->payrollService->registerComponent('socso', new SocsoTableStrategy());
 
-    $this->middleware('auth');
+        $this->middleware('auth');
 
-    $this->middleware('role:Admin,HR,Finance')->except(['exportSlip']);
+        $this->middleware('role:Admin,HR,Finance')->except(['exportSlip']);
 
-    $this->middleware('role:Admin,HR')->only(['generateBatch', 'create', 'store', 'edit', 'update', 'approveL1']);
-    $this->middleware('role:Admin,Finance,HR')->only(['exportReport']);
-    $this->middleware('role:Admin,Finance')->only(['approveL2', 'exportBankFile']);
-}
+        $this->middleware('role:Admin,HR')->only(['generateBatch', 'create', 'store', 'edit', 'update', 'approveL1']);
+        $this->middleware('role:Admin,Finance,HR')->only(['exportReport']);
+        $this->middleware('role:Admin,Finance')->only(['approveL2', 'exportBankFile']);
+    }
 
     public function index()
     {
+        $currentYear = now()->year;
+
         $batches = PayrollBatch::orderBy('created_at', 'desc')->get();
 
         foreach ($batches as $batch) {
@@ -63,7 +65,29 @@ class PayrollController extends Controller
             }
         }
 
-        return view('admin.payroll.index', compact('batches'));
+        foreach ($batches as $batch) {
+            if ($batch->status === 'Draft') {
+                $payrolls = Payroll::where('batch_id', $batch->id)->get();
+
+                foreach ($payrolls as $payroll) {
+                    $this->payrollService->calculateAndSavePayroll(
+                        $payroll->staff,
+                        (int)$payroll->month,
+                        (int)$payroll->year,
+                        (int)$batch->id,
+                        [
+                            'basic_salary'      => $payroll->basic_salary,
+                            'total_allowances'  => $payroll->allowances,
+                            'manual_deduction'  => $payroll->manual_deduction,
+                            'allowance_remark'  => $payroll->allowance_remark,
+                            'deduction_remark'  => $payroll->deduction_remark,
+                        ]
+                    );
+                }
+                $this->payrollService->updateBatchTotals($batch->id);
+            }
+        }
+        return view('admin.payroll.index', compact('batches', 'currentYear'));
     }
 
     public function show($id)
@@ -286,49 +310,44 @@ class PayrollController extends Controller
     }
 
 
-public function reject(Request $request, $id)
-{
-    // 1. Validation (Matches your Blade textarea name)
-    $validated = $request->validate([
-        'rejection_reason' => 'required|string|min:5|max:1000'
-    ]);
-
-    // 2. Access Control (Sarah is 'Finance', this allows her)
-    if (!in_array(auth()->user()->role, ['Finance', 'Admin'])) {
-        return back()->with('error', 'Unauthorized: Only Finance can reject audit batches.');
-    }
-
-    try {
-        DB::beginTransaction();
-
-        $batch = PayrollBatch::findOrFail($id);
-
-        // 3. Status Check: Must be L1_Approved to be rejected by Finance
-        if ($batch->status !== 'L1_Approved') {
-            DB::rollBack();
-            return back()->with('error', 'Current status (' . $batch->status . ') cannot be rejected.');
-        }
-
-        // 4. Reset to Draft so HR can edit again
-        $batch->update([
-            'status' => 'Draft',
-            'remark' => $validated['rejection_reason'],
-            'rejected_by' => auth()->id(),
-            'rejected_at' => now(),
-            'updated_at' => now()
+    public function reject(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'rejection_reason' => 'required|string|min:5|max:1000'
         ]);
 
-        DB::commit();
+        if (!in_array(Auth::user()->role, ['Finance', 'Admin'])) {
+            return back()->with('error', 'Unauthorized: Only Finance can reject audit batches.');
+        }
 
-        return redirect()->route('admin.payroll.index')
-            ->with('warning', 'Payroll batch rejected and returned to HR for corrections.');
+        try {
+            DB::beginTransaction();
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Payroll Rejection Error: ' . $e->getMessage());
-        return back()->with('error', 'System error during rejection: ' . $e->getMessage());
+            $batch = PayrollBatch::findOrFail($id);
+
+            if ($batch->status !== 'L1_Approved') {
+                DB::rollBack();
+                return back()->with('error', 'Current status (' . $batch->status . ') cannot be rejected.');
+            }
+
+            $batch->update([
+                'status' => 'Draft',
+                'remark' => $validated['rejection_reason'],
+                'rejected_by' => Auth::id(),
+                'rejected_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('admin.payroll.index')
+                ->with('warning', 'Payroll batch rejected and returned to HR for corrections.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Payroll Rejection Error: ' . $e->getMessage());
+            return back()->with('error', 'System error during rejection: ' . $e->getMessage());
+        }
     }
-}
 
     public function exportReport($id)
     {

@@ -1,11 +1,13 @@
 <div class="row g-0 h-100">
-    {{-- view receipt --}}
+    {{-- View Receipt Section --}}
+    @php $secureUrl = route('claims.view_receipt', $claim->id); @endphp
+
     <div class="col-lg-7 bg-dark d-flex align-items-center justify-content-center position-relative" style="min-height: 500px;">
         @if($claim->receipt_path)
             @if(Str::endsWith($claim->receipt_path, '.pdf'))
-                <iframe src="{{ asset('storage/' . $claim->receipt_path) }}" class="w-100 h-100 border-0" style="min-height: 500px;"></iframe>
+                <iframe src="{{ $secureUrl }}" class="w-100 h-100 border-0" style="min-height: 500px;"></iframe>
             @else
-                <img src="{{ asset('storage/' . $claim->receipt_path) }}" class="img-fluid" style="max-height: 100%; max-width: 100%;">
+                <img src="{{ $secureUrl }}" class="img-fluid" style="max-height: 100%; max-width: 100%;">
             @endif
         @else
             <div class="text-white opacity-50 text-center">
@@ -15,7 +17,7 @@
         @endif
     </div>
 
-    {{-- verification form --}}
+    {{-- Verification Form Section --}}
     <div class="col-lg-5 bg-white border-start p-0">
         <div class="p-4 h-100 d-flex flex-column">
             
@@ -25,7 +27,7 @@
                 <small class="text-muted ms-2">{{ $claim->created_at->format('d M Y, h:i A') }}</small>
             </div>
 
-            {{-- staff submission --}}
+            {{-- Staff Submission Data --}}
             <div class="p-3 bg-light rounded mb-3 border">
                 <label class="small text-uppercase text-muted fw-bold">Staff Submission</label>
                 <div class="d-flex justify-content-between align-items-end">
@@ -40,39 +42,57 @@
                 </div>
             </div>
 
-            {{-- admin edit --}}
+            {{-- Admin Edit  --}}
             <div class="mb-3">
                 <label class="form-label fw-bold text-success">
                     <i class="bi bi-check-circle-fill me-1"></i>Verified Amount (RM)
                 </label>
                 <div class="input-group">
                     <span class="input-group-text bg-white text-success fw-bold">RM</span>
+                    
                     <input type="number" id="final_approved_amount" class="form-control form-control-lg fw-bold text-success" 
-                           step="0.01" value="{{ $claim->amount }}">
+                           step="0.01" value="{{ $claim->amount }}" 
+                           {{ Auth::user()->role === 'Finance' ? 'disabled' : '' }}>
                 </div>
-                <div class="form-text">If the receipt amount differs, update this value before approving.</div>
+                
+                @if(Auth::user()->role !== 'Finance')
+                    <div class="form-text">If the receipt amount differs, update this value before approving.</div>
+                @endif
             </div>
 
             <div class="mb-auto">
                 <label class="form-label small text-muted">Approval Remarks (Optional)</label>
-                <textarea id="approval_remark" class="form-control" rows="2" placeholder="e.g., Approved partial amount based on receipt."></textarea>
+ 
+                <textarea id="approval_remark" class="form-control" rows="2" placeholder="e.g., Approved partial amount..." 
+                {{ Auth::user()->role === 'Finance' ? 'disabled' : '' }}></textarea>
             </div>
 
-            {{-- actions --}}
             <hr>
-            <div class="d-grid gap-2">
-                <button type="button" onclick="submitApproval('{{ $claim->id }}')" class="btn btn-success btn-lg">
-                    <i class="bi bi-check-lg me-2"></i>Confirm & Approve
-                </button>
-                <button type="button" onclick="openRejectModal('{{ $claim->id }}')" class="btn btn-outline-danger">
-                    Reject Claim
-                </button>
-            </div>
+            
+            @if(Auth::user()->role === 'Finance')
+                <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center">
+                    <i class="bi bi-lock-fill fs-4 me-3"></i>
+                    <div>
+                        <strong>View Only Mode</strong>
+                        <div class="small">Finance users cannot modify claim status.</div>
+                    </div>
+                </div>
+            @else
+                <div class="d-grid gap-2">
+                    <button type="button" onclick="submitApproval('{{ $claim->id }}')" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-lg me-2"></i>Confirm & Approve
+                    </button>
+                    <button type="button" onclick="openRejectModal('{{ $claim->id }}')" class="btn btn-outline-danger">
+                        Reject Claim
+                    </button>
+                </div>
+            @endif
+
         </div>
     </div>
 </div>
 
-{{-- rejection --}}
+{{-- Rejection Modal --}}
 <div class="modal fade" id="rejectModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -86,7 +106,7 @@
                     <input type="hidden" name="claim_id" id="modal_claim_id" value="{{ $claim->id }}">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Reason for Rejection</label>
-                        <textarea name="rejection_reason" class="form-control" rows="4" required placeholder="Example: Receipt date is outside the allowed claiming period."></textarea>
+                        <textarea name="rejection_reason" class="form-control" rows="4" required placeholder="Reason..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -98,9 +118,9 @@
     </div>
 </div>
 
+{{-- Scripts --}}
 <script>
     function openRejectModal(claimId) {
-   
         var myModal = new bootstrap.Modal(document.getElementById('rejectModal'));
         document.getElementById('modal_claim_id').value = claimId; 
         myModal.show();

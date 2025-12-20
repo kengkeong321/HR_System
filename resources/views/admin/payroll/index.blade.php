@@ -8,9 +8,11 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 mb-0 text-gray-800">Payroll Batches</h1>
 
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#generateBatchModal">
-            <i class="bi bi-plus-circle me-1"></i> Generate New Payroll
-        </button>
+        @if(in_array(auth()->user()->role, ['Admin', 'HR']))
+            <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#generateBatchModal">
+                <i class="bi bi-plus-circle me-1"></i> Generate New Payroll
+            </button>
+        @endif
     </div>
 
     @if(session('success'))
@@ -82,6 +84,7 @@
                                 @endif
                             </td>
                             <td class="text-center">
+                                
                                 <a href="{{ route('admin.payroll.batch_view', $batch->id) }}" 
                                    class="btn btn-sm {{ $batch->status == 'Draft' && $batch->remark ? 'btn-danger' : 'btn-outline-primary' }} px-3">
                                     <i class="bi bi-{{ $batch->status == 'Draft' && $batch->remark ? 'exclamation-circle' : 'gear' }}-fill me-1"></i> 
@@ -94,7 +97,9 @@
                             <td colspan="7" class="text-center text-muted py-5">
                                 <i class="bi bi-folder-x fs-1 d-block mb-3 opacity-25"></i>
                                 No payroll batches generated yet.<br>
+                                @if(in_array(auth()->user()->role, ['Admin', 'HR']))
                                 <small>Click "Generate New Payroll" to create your first monthly batch.</small>
+                                @endif
                             </td>
                         </tr>
                         @endforelse
@@ -105,6 +110,7 @@
     </div>
 </div>
 
+@if(in_array(auth()->user()->role, ['Admin', 'HR']))
 <div class="modal fade" id="generateBatchModal" tabindex="-1" aria-labelledby="generateBatchModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
@@ -119,8 +125,9 @@
                 <div class="modal-body py-4">
                     <div class="mb-3">
                         <label for="batch_month" class="form-label fw-bold small text-muted text-uppercase">Select Month</label>
-                        <select name="month" id="batch_month" class="form-select form-select-lg" required title="Please select a month">
+                        <select name="month" id="batch_month" class="form-select form-select-lg" required>
                              @foreach(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as $index => $m)
+                         
                                 <option value="{{ $index + 1 }}" {{ date('n') == ($index + 1) ? 'selected' : '' }}>
                                     {{ $m }}
                                 </option>
@@ -129,7 +136,12 @@
                     </div>
                     <div class="mb-0">
                         <label for="batch_year" class="form-label fw-bold small text-muted text-uppercase">Select Year</label>
-                        <input type="number" name="year" id="batch_year" class="form-control form-control-lg" value="{{ date('Y') }}" min="2020" max="{{ date('Y') + 1 }}" required title="Please enter a year">
+                        {{-- [FIX 3] UI Restriction: Year is Read-Only (Current Year) --}}
+                        <input type="number" name="year" id="batch_year" 
+                               class="form-control form-control-lg bg-light" 
+                               value="{{ $currentYear ?? date('Y') }}" 
+                               readonly 
+                               title="Payroll generation is restricted to the current year.">
                     </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
@@ -142,4 +154,5 @@
         </div>
     </div>
 </div>
+@endif
 @endsection

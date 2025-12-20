@@ -80,10 +80,10 @@ class ClaimController extends Controller
     {
         try {
             DB::beginTransaction();
-            if (!in_array(Auth::user()->role, ['HR', 'Admin'])) {
-                return back()->with('error', 'Unauthorized: Request denied.');
-            }
 
+            if (Auth::user()->role === 'Finance') {
+                abort(403, 'Finance users are restricted to View Only mode.');
+            }
             $claim = Claim::findOrFail($id);
 
             $request->validate([
@@ -139,30 +139,33 @@ class ClaimController extends Controller
             ], 500);
         }
     }
-public function reject(Request $request, $id)
-{
-    // 1. Validation
-    $request->validate([
-        'rejection_reason' => 'required|string|max:500'
-    ]);
 
-    try {
-        $claim = Claim::findOrFail($id);
+    public function reject(Request $request, $id)
+    {
+        if (Auth::user()->role === 'Finance') {
+            abort(403, 'Finance users are restricted to View Only mode.');
+        }
 
-        // 2. Update status and log who rejected it
-        $claim->update([
-            'status' => 'Rejected',
-            'rejection_reason' => $request->rejection_reason,
-            'rejected_by' => Auth::user()->user_id, // Links to your user_id column
-            'updated_at' => now()
+        $request->validate([
+            'rejection_reason' => 'required|string|max:500'
         ]);
 
-        return redirect()->route('admin.claims.index')->with('warning', 'Claim has been rejected.');
-        
-    } catch (\Exception $e) {
-        return back()->with('error', 'Something went wrong: ' . $e->getMessage());
+        try {
+            $claim = Claim::findOrFail($id);
+
+            $claim->update([
+                'status' => 'Rejected',
+                'rejection_reason' => $request->rejection_reason,
+                'rejected_by' => Auth::user()->user_id,
+                'updated_at' => now()
+            ]);
+
+            return redirect()->route('admin.claims.index')->with('warning', 'Claim has been rejected.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Something went wrong: ' . $e->getMessage());
+        }
     }
-}
+
     private function refreshNetSalary($payroll)
     {
         $statutoryTotal = $this->getStatutoryTotal($payroll);

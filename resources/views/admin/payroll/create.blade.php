@@ -144,25 +144,26 @@
 
 <script>
 function filterMonths() {
-    const yearSelect = document.getElementById('payroll_year');
+    const yearInput = document.getElementById('payroll_year');
     const monthSelect = document.getElementById('payroll_month');
-    const selectedYear = parseInt(yearSelect.value);
     
     const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    
+    const currentMonth = now.getMonth() + 1; 
+
     const monthNames = ["January", "February", "March", "April", "May", "June",
-                        "July", "August", "September", "October", "November", "December"];
-    
+        "July", "August", "September", "October", "November", "December"
+    ];
+
     monthSelect.innerHTML = '';
-    let maxMonth = (selectedYear < currentYear) ? 12 : currentMonth;
-    
-    for (let i = 1; i <= maxMonth; i++) {
+
+    for (let i = 1; i <= currentMonth; i++) {
         let option = document.createElement('option');
-        option.value = monthNames[i-1]; 
-        option.text = monthNames[i-1];
-        if (i === maxMonth) option.selected = true;
+        
+        option.value = i; 
+        option.text = monthNames[i - 1];
+        
+        if (i === currentMonth) option.selected = true;
+        
         monthSelect.appendChild(option);
     }
 }
