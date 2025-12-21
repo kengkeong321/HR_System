@@ -65,6 +65,7 @@ Route::get('/attendance-summary', function (Request $request, PayrollService $se
             'user_name' => $userData->user_name ?? 'Unknown User',
             'total_hours' => round($totalHours, 2),
             'employment_type' => $userData->employment_type ?? 'N/A'
-        ]
+        ],
+        'timeStamp' => now()->format('Y-m-d H:i:s')
     ]);
 });
