@@ -12,13 +12,14 @@
       <ul>
         @if(($user?->role ?? null) === 'Admin')
           <li><a href="{{ route('admin.users.index') }}">Manage Users</a></li>
+          <li><a href="{{ route('admin.staff.index') }}">Manage Staff</a></li>
         @endif
         <li><a href="{{ route('admin.faculties.index') }}">Manage Faculties</a></li>
         <li><a href="{{ route('admin.departments.index') }}">Manage Departments</a></li>
         <li><a href="{{ route('admin.courses.index') }}">Manage Courses</a></li>
         <li><a href="{{ url('/admin/attendance') }}">Mark Attendance</a></li>
            <li><a href="{{ route('training.index') }}">Manage Training Programs</a></li>
-        <li><a href="{{ route('admin.staff.index') }}">Manage Staff</a></li>
+
       </ul>
     </div>
   </div>
