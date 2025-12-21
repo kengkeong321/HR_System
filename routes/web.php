@@ -78,27 +78,39 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
         ->name('users.toggleStatus')
         ->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 
-    // --- Faculty, Department, Course CRUD ---
+        /*
+|--------------------------------------------------------------------------
+| Faculty, Department, Course, Position Management
+|--------------------------------------------------------------------------
+*/
+    // Faculties module
     Route::resource('faculties', \App\Http\Controllers\Admin\FacultyController::class)->except(['show', 'destroy']);
-    // Positions module
-    Route::resource('positions', \App\Http\Controllers\Admin\PositionController::class)->except(['show', 'destroy']);
-    Route::patch('positions/{position}/status', [\App\Http\Controllers\Admin\PositionController::class, 'toggleStatus'])->name('positions.toggleStatus');
-    Route::post('positions/page', [\App\Http\Controllers\Admin\PositionController::class, 'page'])->name('positions.page');
 
     // AJAX: return active departments for a faculty (used by faculties index modal)
     Route::get('faculties/{faculty}/departments', [\App\Http\Controllers\Admin\FacultyController::class, 'departments'])->name('faculties.departments');
     Route::patch('faculties/{faculty}/status', [\App\Http\Controllers\Admin\FacultyController::class, 'toggleStatus'])->name('faculties.toggleStatus');
 
+    // Departments module
     Route::resource('departments', \App\Http\Controllers\Admin\DepartmentController::class)->except(['show', 'destroy']);
-    // Assignment routes for departments (assign courses)
+    // Assign courses to department
     Route::get('departments/{department}/assign', [\App\Http\Controllers\Admin\DepartmentController::class, 'assign'])->name('departments.assign');
     Route::post('departments/{department}/assign', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignStore'])->name('departments.assign.store');
-    // API for modal: get assigned courses for a department (used by the assignments modal)
+    // Assign staff to department
+    Route::get('departments/{department}/assign-staff', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignStaff'])->name('departments.assign.staff');
+    Route::post('departments/{department}/assign-staff', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignStaffStore'])->name('departments.assign.staff.store');
+
+    // Get assigned courses for department
     Route::get('departments/{department}/assignments', [\App\Http\Controllers\Admin\DepartmentController::class, 'assignments'])->name('departments.assignments');
     Route::patch('departments/{department}/status', [\App\Http\Controllers\Admin\DepartmentController::class, 'toggleStatus'])->name('departments.toggleStatus');
 
+    // Courses module
     Route::resource('courses', \App\Http\Controllers\Admin\CourseController::class)->except(['show', 'destroy']);
     Route::patch('courses/{course}/status', [\App\Http\Controllers\Admin\CourseController::class, 'toggleStatus'])->name('courses.toggleStatus');
+
+    // Positions module
+    Route::resource('positions', \App\Http\Controllers\Admin\PositionController::class)->except(['show', 'destroy']);
+    Route::patch('positions/{position}/status', [\App\Http\Controllers\Admin\PositionController::class, 'toggleStatus'])->name('positions.toggleStatus');
+    Route::post('positions/page', [\App\Http\Controllers\Admin\PositionController::class, 'page'])->name('positions.page');
 
     // AJAX pagination endpoints
     Route::post('faculties/page', [\App\Http\Controllers\Admin\FacultyController::class, 'page'])->name('faculties.page');
@@ -153,7 +165,7 @@ Route::middleware(['auth', 'role:HR,Finance,Admin'])->prefix('admin')->name('adm
 Route::get('/api/positions', [\App\Http\Controllers\Api\PositionController::class, 'index'])->name('api.positions.index');
 
 // Staff routes
-Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
+Route::prefix('staff')->name('staff.')->middleware(['auth', EnsureUserIsStaffOnly::class])->group(function () {
 
     Route::get('/dashboard', function () {
         return view('staff.dashboard');

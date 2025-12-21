@@ -1,5 +1,5 @@
 <?php
-
+//Woo Keng Keong
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -8,16 +8,7 @@ use Illuminate\Http\Request;
 
 class PositionController extends Controller
 {
-    /**
-     * Return all active positions formatted for dropdowns.
-     *
-     * Response format:
-     * {
-     *   status: 'ok',
-     *   timestamp: 1234567890,
-     *   data: [ { position_id, name }, ... ]
-     * }
-     */
+    // return list of active positions as JSON
     public function index(Request $request)
     {
         $positions = Position::where('status', 'Active')

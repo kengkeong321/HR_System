@@ -8,9 +8,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureApiKey
 {
-    /**
-     * Basic API key check: expects X-API-KEY header to match config('services.api.key')
-     */
     public function handle(Request $request, Closure $next)
     {
         if (! $request->is('api/*')) {
@@ -21,7 +18,6 @@ class EnsureApiKey
         $expected = config('services.api.key');
 
         if (empty($expected)) {
-            // If no key configured, allow through (developer choice).
             return $next($request);
         }
 

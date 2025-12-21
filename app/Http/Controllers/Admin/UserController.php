@@ -103,7 +103,6 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        // Delete disabled — prefer status toggle
         return redirect()->route('admin.users.index')->with('error', 'Delete operation is disabled. Use status to set Inactive');
     }
 

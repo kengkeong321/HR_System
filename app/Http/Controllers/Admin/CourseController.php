@@ -1,5 +1,5 @@
 <?php
-
+//Woo Keng Keong
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -79,7 +79,6 @@ class CourseController extends Controller
 
     public function destroy(string $course)
     {
-        // Delete disabled — prefer status toggle
         return redirect()->route('admin.courses.index')->with('error', 'Delete operation is disabled. Use status to set Inactive');
     }
 

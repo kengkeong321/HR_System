@@ -9,9 +9,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApiResponseWrapper
 {
-    /**
-     * Wrap JSON responses with { status, timestamp, data|error }
-     */
     public function handle(Request $request, Closure $next)
     {
         $response = $next($request);
