@@ -79,13 +79,15 @@ public function myApiExport()
 
        //===========================================================================================
 
-    public function assignPage($id) {
-        return view('admin.training.assign', [
-            'training' => Training::getTrainingDetails($id),
-            'staffList' => User::where('role', 'Staff')->get()
-        ]);
-    }
-
+public function assignPage($id) {
+    return view('admin.training.assign', [
+        'training' => Training::getTrainingDetails($id),
+        'staffList' => User::where('role', 'Staff')
+                            ->where('status', 'Active')
+                            ->with('staffRecord')
+                            ->get()
+    ]);
+}
        //===========================================================================================
 
     public function updateStatus(Request $request, $id, $userId) {
