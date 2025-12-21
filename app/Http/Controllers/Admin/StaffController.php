@@ -38,6 +38,12 @@ class StaffController extends Controller
         return view('admin.staff.create', compact('departments', 'positions'));
     }
 
+        public function checkName(Request $request)
+    {
+        $exists = \App\Models\Staff::where('full_name', $request->name)->exists();
+        return response()->json(['exists' => $exists]);
+    }
+
     /**
      * Store a newly created resource in storage.
      */
@@ -45,8 +51,8 @@ class StaffController extends Controller
     {
         // 1. Validate the incoming request
         $validatedData = $request->validate([
-            'full_name'       => 'required|string',
-            'email'           => 'required|email|unique:staff,email',
+            'full_name' => 'required|string|max:255|unique:staff,full_name', // Ensure unique name
+            'email' => 'required|email|unique:staff,email',
             'depart_id'       => 'nullable',
             'position'        => 'nullable',
             'employment_type' => 'required|in:Full-Time,Part-Time,Contract,Intern',
@@ -152,11 +158,5 @@ class StaffController extends Controller
             return back()->withInput()->withErrors(['error' => 'Update Failed: ' . $e->getMessage()]);
         }
     }
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
+
 }

@@ -63,19 +63,6 @@
                 </div>
 
                 <div class="col-md-4 mb-3">
-                    <label class="form-label">Department</label>
-                    <select name="depart_id" class="form-select @error('depart_id') is-invalid @enderror">
-                        <option value="">No Department (Unassigned)</option> @foreach($departments as $dept)
-                            <option value="{{ $dept->depart_id }}" 
-                                {{ old('depart_id', $staff->depart_id) == $dept->depart_id ? 'selected' : '' }}>
-                                {{ $dept->depart_name ?? $dept->depart_id }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('depart_id') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="col-md-4 mb-3">
                     <label class="form-label">Contract Expiry (Optional)</label>
                     <input type="date" name="contract_expiry_date" class="form-control" value="{{ old('contract_expiry_date', $staff->contract_expiry_date) }}">
                 </div>
