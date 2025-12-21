@@ -7,6 +7,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+use App\States\User\UserStatusState;
+use App\States\User\ActiveState;
+use App\States\User\InactiveState;
+
 class User extends Authenticatable
 {
     const ROLE_ADMIN = 'Admin';
@@ -58,6 +62,15 @@ class User extends Authenticatable
     public function staff()
     {
         return $this->hasOne(Staff::class, 'user_id', 'user_id');
+    }
+
+        public function statusState(): UserStatusState
+    {
+        return match ($this->status) {
+            'Active'    => new ActiveState(),
+            'Inactive'  => new InactiveState(),
+            default     => new InactiveState(),
+        };
     }
 
 

@@ -21,11 +21,14 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('user_name', $request->input('user_name'))
-            ->where('status', 'Active')
             ->first();
 
         if (! $user || ! $user->verifyPassword($request->input('password'))) {
             return back()->withErrors(['credentials' => 'Invalid username or password'])->withInput();
+        }
+
+        if (!$user->statusState()->canLogin()) {
+            return back()->withErrors(['access' => 'Account is ' . $user->status . '. Please contact HR.'])->withInput();
         }
 
         Auth::login($user);

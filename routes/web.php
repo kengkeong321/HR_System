@@ -270,21 +270,17 @@ Route::middleware(['auth'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| staff management
+| Staff Management
 |--------------------------------------------------------------------------
 */
-
 use App\Http\Controllers\Admin\StaffController;
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-    // 1. AJAX Check (Simplified name)
-    // The actual name will be 'admin.staff.checkEmail'
+    // These are now correctly prefixed as admin.staff.xxxx
     Route::get('staff/check-email', [StaffController::class, 'checkEmail'])->name('staff.checkEmail');
-
-    // 2. Pagination route
+    Route::get('staff/check-name', [StaffController::class, 'checkName'])->name('staff.checkName'); // FIXED
     Route::get('staff/page', [StaffController::class, 'page'])->name('staff.page');
 
-    // 3. Resource routes (index, create, store, etc.)
     Route::resource('staff', StaffController::class);
 });
 
