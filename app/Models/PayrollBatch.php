@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class PayrollBatch extends Model
+{
+    const STATUS_DRAFT = 'Draft';
+    const STATUS_PAID = 'Paid';
+    const STATUS_L1_APPROVED = 'L1_Approved';
+    const STATUS_L2_APPROVED = 'L2_Approved';
+
+    protected $fillable = [
+        'month_year',
+        'status',
+        'total_staff',
+        'total_amount',
+        'remark',
+        'rejected_by',
+        'rejected_at',
+        'generated_by',
+        'approved_by'
+    ];
+
+    protected $casts = [
+        'rejected_at' => 'datetime'
+    ];
+
+    public function payrolls()
+    {
+        return $this->hasMany(Payroll::class, 'batch_id', 'id');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by', 'user_id');
+    }
+    public function hasRejection()
+    {
+        return !is_null($this->remark) && !is_null($this->rejected_by);
+    }
+}

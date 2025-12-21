@@ -102,6 +102,18 @@
         width: 100%;
       }
     }
+
+    nav[role="navigation"] svg {
+        width: 1.25rem; /* Equivalent to 20px */
+        height: 1.25rem;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+    nav[role="navigation"] .flex.items-center.justify-between {
+        gap: 10px;
+    }
+
   </style>
 </head>
 
@@ -142,6 +154,10 @@
           <li class="nav-item">
             <a class="nav-link d-flex align-items-center" href="{{ route('admin.users.index') }}"><i class="bi bi-people me-2"></i><span class="label">Users</span></a>
           </li>
+
+          <li class="nav-item">
+            <a class="nav-link d-flex align-items-center" href="{{ route('admin.staff.index') }}"><i class="bi bi-people me-2"></i><span class="label">Staff</span></a>
+          </li>
           @endif
 
           <li class="nav-item">
@@ -169,7 +185,7 @@
           <li class="nav-item">
     <a class="nav-link d-flex align-items-center {{ request()->routeIs('training.records') ? 'active' : '' }}" href="{{ route('training.records') }}">
         <i class="bi bi-person-badge me-2"></i>
-        <span class="label">Staff Records</span>
+        <span class="label">Training Records</span>
     </a>
 </li>
 
@@ -254,6 +270,15 @@
               style="margin-left: -2%;"> <i class="bi bi-gear me-2" style="width: 25px; text-align: center;"></i>
               <span class="label">Settings</span>
             </a>
+          </li>
+        </ul>
+
+        <ul class="nav flex-column ms-0 p-0" style="list-style: none;">
+          <li class="nav-item">
+              <a href="{{ route('admin.attendance.test_api') }}" class="nav-link">
+                  <i class="bi bi-cpu me-2"></i>
+                  <span>API Connection Test</span>
+              </a>
           </li>
         </ul>
 

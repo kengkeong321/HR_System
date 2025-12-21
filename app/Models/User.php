@@ -9,6 +9,11 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    const ROLE_ADMIN = 'Admin';
+    const ROLE_HR = 'HR';
+    const ROLE_FINANCE = 'Finance';
+    const ROLE_STAFF = 'Staff';
+    
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
@@ -57,6 +62,11 @@ class User extends Authenticatable
 
 
 
+public function staffRecord()
+{
+   
+    return $this->hasOne(Staff::class, 'user_id', 'user_id');
+}
 
 
 

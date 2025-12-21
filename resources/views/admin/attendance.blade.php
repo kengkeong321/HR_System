@@ -83,7 +83,7 @@
                 <div class="alert alert-warning border-0 shadow-sm text-center py-4">
                     <i class="fas fa-user-slash fa-3x mb-3 text-muted"></i>
                     <p class="mb-0">No active staff found with username "<strong>{{ $search }}</strong>".</p>
-                    <small>Only users with the 'Staff' role and 'Active' status can be marked.</small>
+                    <small>Only users with the 'Staff', 'HR', and 'Finance' role and 'Active' status can be marked.</small>
                 </div>
             @endif
         </div>

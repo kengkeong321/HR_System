@@ -32,9 +32,12 @@ class TrainingService
 
     public function getTrainingDetails($id)
     {
-        return TrainingProgram::with(['participants', 'feedbacks.user'])
-            ->withCount('participants')
-            ->findOrFail($id);
+       return TrainingProgram::with([
+        'participants.staffRecord', 
+        'feedbacks.user.staffRecord'
+    ])
+    ->withCount('participants')
+    ->findOrFail($id);
     }
 
 
@@ -88,6 +91,13 @@ class TrainingService
 
 public function assignStaff($trainingId, $userId)
 {
+    
+    $userExists = \App\Models\User::where('user_id', $userId)->exists();
+    if (!$userExists) {
+        throw new \Exception('Invalid Data: The selected Staff ID does not exist in our records.');
+    }
+
+    
     $newTraining = TrainingProgram::findOrFail($trainingId);
 
     $newStart = $newTraining->start_time;
@@ -107,7 +117,7 @@ public function assignStaff($trainingId, $userId)
         throw new \Exception('Training slots are full!');
     }
 
-  
+   
     $hasConflict = TrainingAttendance::where('training_attendance.user_id', $userId)
         ->join('training_programs', 'training_attendance.training_program_id', '=', 'training_programs.id')
         ->where('training_programs.status', '!=', 'Ended') 
@@ -120,6 +130,7 @@ public function assignStaff($trainingId, $userId)
         throw new \Exception('Time Conflict: This staff is already assigned to another ACTIVE program at this time.');
     }
 
+   
     return $newTraining->participants()->attach($userId, ['status' => 'Assigned']);
 }
 
@@ -201,7 +212,9 @@ public function activateTraining($id)
 public function getAllStaffForRecords()
 {
   
-    return User::where('role', 'Staff')->get();
+    return User::where('role', 'Staff')
+        ->with('staffRecord') 
+        ->get();
 }
 
 

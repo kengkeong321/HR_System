@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Models\Staff;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
@@ -37,18 +40,39 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'user_name' => 'required|string|max:50|unique:User,user_name',
-            'password' => 'required|string|min:6',
-            'role' => 'required|in:Admin,Staff',
-            'status' => 'required|in:Active,Inactive',
+        $request->validate([
+            'user_name'    => 'required|unique:user,user_name',
+            'password'     => 'required|min:6',
+            'full_name'    => 'required|string|max:100',
+            'email'        => 'required|email|unique:staff,email',
+            'role'         => 'required',
+            'basic_salary' => 'numeric',
         ]);
 
-        $data['password'] = hash('sha256', $data['password']);
+        DB::transaction(function () use ($request) {
+            // 1. Create User
+            $user = User::create([
+                'user_name' => $request->user_name,
+                'password'  => hash('sha256', $request->password),
+                'role'      => $request->role,
+                'status'    => $request->status,
+            ]);
 
-        User::create($data);
+            // 2. Create Staff info for EVERYONE
+            $isHourly = in_array($request->employment_type, ['Part-Time', 'Intern']);
 
-        return redirect()->route('admin.users.index')->with('success', 'User created');
+            Staff::create([
+                'user_id'         => $user->user_id,
+                'full_name'       => $request->full_name,
+                'email'           => $request->email,
+                'employment_type' => $request->employment_type,
+                'basic_salary'    => !$isHourly ? $request->basic_salary : 0,
+                'hourly_rate'     => $isHourly ? $request->basic_salary : 0,
+                'join_date'       => now(),
+            ]);
+        });
+
+        return redirect()->route('admin.users.index')->with('success', 'User and Profile created!');
     }
 
     public function edit(User $user)
@@ -61,7 +85,7 @@ class UserController extends Controller
         $data = $request->validate([
             'user_name' => 'required|string|max:50|unique:User,user_name,'.$user->user_id.',user_id',
             'password' => 'nullable|string|min:6',
-            'role' => 'required|in:Admin,Staff',
+            'role'      => 'required|in:Admin,Staff,HR,Finance',
             'status' => 'required|in:Active,Inactive',
         ]);
 

@@ -9,7 +9,6 @@ class TrainingProgram extends Model
    
     protected $guarded = [];
 
-    
     public function participants()
     {
        

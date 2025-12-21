@@ -1,17 +1,20 @@
 @extends('layouts.admin')
 
-@section('title', 'Create Payroll')
+@section('title', 'Generate Payroll')
 
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<style>
+    .contract-warning { display: none; color: #dc3545; font-size: 0.875rem; margin-top: 5px; font-weight: bold; }
+    .part-time-section { display: none; background: #f8f9fc; padding: 15px; border-radius: 5px; border-left: 5px solid #4e73df; margin-bottom: 20px; }
+</style>
 @endpush
 
 @section('content')
 <div class="container-fluid">
-    {{-- Error Display Section --}}
     @if($errors->any())
-    <div class="alert alert-danger">
+    <div class="alert alert-danger shadow-sm">
         <ul class="mb-0">
             @foreach ($errors->all() as $error)
             <li>{{ $error }}</li>
@@ -21,146 +24,112 @@
     @endif
 
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Generate Payroll</h6>
+        <div class="card-header py-3 bg-white d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary"><i class="bi bi-calculator-fill me-2"></i>Generate Payroll Batch / Individual</h6>
         </div>
         <div class="card-body">
-            <form action="{{ route('admin.payroll.store') }}" method="POST">
+            <form action="{{ route('admin.payroll.store') }}" method="POST" id="payroll-form">
                 @csrf
 
-                {{-- 1. Staff Selection --}}
-                <div class="row mb-3">
+                <div class="row mb-4 p-3 bg-light rounded mx-1">
+                    @php
+                        $currentYear = date('Y');
+                    @endphp
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Select Year <span class="text-danger">*</span></label>
+                        <select name="year" id="payroll_year" class="form-select border-primary" onchange="filterMonths()" required>
+                            @for ($y = 2024; $y <= $currentYear; $y++)
+                                <option value="{{ $y }}" {{ $y == $currentYear ? 'selected' : '' }}>{{ $y }}</option>
+                            @endfor
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Select Month <span class="text-danger">*</span></label>
+                        <select name="month" id="payroll_month" class="form-select border-primary" required>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
                     <div class="col-md-12">
-                        <label for="select-staff" class="form-label">Select Staff <span class="text-danger">*</span></label>
+                        <label for="select-staff" class="form-label fw-bold">Select Staff <span class="text-danger">*</span></label>
                         <select name="staff_id" id="select-staff" class="form-select" required>
-                            <option value="">Search Staff...</option>
+                            <option value="">Search Staff Name or ID...</option>
                             @foreach($staffMembers as $staff)
                             <option value="{{ $staff->staff_id }}"
                                 data-salary="{{ $staff->basic_salary }}"
                                 data-type="{{ $staff->employment_type }}"
                                 data-rate="{{ $staff->hourly_rate }}"
-                                data-expiry="{{ $staff->contract_expiry_date }}">
+                                data-expiry="{{ $staff->contract_expiry_date }}"
+                                data-join="{{ $staff->join_date }}"> 
                                 [{{ $staff->employment_type }}] {{ $staff->full_name }} ({{ $staff->staff_id }})
                             </option>
                             @endforeach
                         </select>
-                        <div id="contract-alert" class="contract-warning">
-                            <i class="bi bi-exclamation-triangle"></i> Warning: This contract has expired!
-                        </div>
+                        <div id="contract-alert" class="contract-warning mt-2"></div>
                     </div>
                 </div>
 
-                {{-- 2. Date Selection --}}
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label>Month <span class="text-danger">*</span></label>
-                        <select name="month" class="form-select" required>
-                            @foreach(['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] as $m)
-                            <option value="{{ $m }}" {{ date('F') == $m ? 'selected' : '' }}>{{ $m }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label>Year <span class="text-danger">*</span></label>
-                        <input type="number" name="year" class="form-control" value="{{ date('Y') }}" required>
-                    </div>
-                </div>
-
-                <hr>
-
-                {{-- 3. Dynamic Section for Part-Timers --}}
-                <div id="part-time-box" class="part-time-section">
-                    <h6 class="text-primary fw-bold">Part-Time Calculation</h6>
+                <div id="part-time-box" class="part-time-section shadow-sm">
+                    <h6 class="text-primary fw-bold mb-3"><i class="bi bi-clock-history"></i> Part-Time / Hourly Calculation</h6>
                     <div class="row">
                         <div class="col-md-6">
-                            <label>Hourly Rate (RM)</label>
-                            <input type="number" step="0.01" id="hourly_rate" name="hourly_rate" class="form-control calc-trigger" readonly>
+                            <label class="form-label">Hourly Rate (RM)</label>
+                            <input type="number" step="0.01" id="hourly_rate" name="hourly_rate" class="form-control bg-white" readonly>
                         </div>
                         <div class="col-md-6">
-                            <label>Hours Worked <span class="text-danger">*</span></label>
-                            <input type="number" step="0.5" id="hours_worked" name="hours_worked" class="form-control calc-trigger" placeholder="Enter hours...">
+                            <label class="form-label">Hours Worked <span class="text-danger">*</span></label>
+                            <input type="number" step="0.5" id="hours_worked" name="hours_worked" class="form-control calc-trigger border-primary" placeholder="Enter total hours...">
                         </div>
                     </div>
                 </div>
 
-                {{-- 4. Financials with Standard Library --}}
-                <h6 class="text-muted mb-3">Salary Breakdown & Adjustments</h6>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Basic Salary (RM)</label>
+                        <input type="number" step="0.01" name="basic_salary" id="basic_salary" class="form-control form-control-lg calc-trigger" required>
+                        <div class="form-text">System defaults to staff master profile salary.</div>
+                    </div>
+                </div>
 
-                {{-- Basic Salary --}}
                 <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Basic Salary (RM)</label>
-                        <input type="number" step="0.01" name="basic_salary" id="basic_salary" class="form-control calc-trigger" required>
-                        <div class="form-text">Fixed monthly base.</div>
-                    </div>
-                </div>
-
-                {{-- Allowance Section --}}
-                <div class="row mb-3 p-3 bg-light rounded">
-                    <div class="col-md-4">
-                        <label class="form-label text-success"><i class="bi bi-plus-circle"></i> Allowance Amount (RM)</label>
-                        <input type="number" step="0.01" name="allowance" id="allowance" class="form-control calc-trigger" value="0" min="0">
-                    </div>
-
-                    {{-- STANDARD LIBRARY DROPDOWN --}}
-                    <div class="col-md-4">
-                        <label class="form-label">Allowance Type</label>
-                        <select id="allowance_select" class="form-select remark-autofill" data-target="allowance_remark">
-                            <option value="">-- Custom / None --</option>
-                            @foreach($allowanceTypes as $type)
-                            <option value="{{ $type->name }}">{{ $type->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">Remark / Detail</label>
-                        {{-- Allows manual typing OR auto-filled from dropdown --}}
-                        <input type="text" name="allowance_remark" id="allowance_remark" class="form-control" placeholder="Description...">
-                    </div>
-                </div>
-
-                {{-- Deduction Section --}}
-                <div class="row mb-3 p-3 bg-light rounded">
-                    <div class="col-md-4">
-                        <label class="form-label text-danger"><i class="bi bi-dash-circle"></i> Deduction Amount (RM)</label>
-                        <input type="number" step="0.01" name="deduction" id="deduction" class="form-control calc-trigger" value="0" min="0">
-                    </div>
-
-                    {{-- STANDARD LIBRARY DROPDOWN --}}
-                    <div class="col-md-4">
-                        <label class="form-label">Deduction Type</label>
-                        <select id="deduction_select" class="form-select remark-autofill" data-target="deduction_remark">
-                            <option value="">-- Custom / None --</option>
-                            @foreach($deductionTypes as $type)
-                            <option value="{{ $type->name }}">{{ $type->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label">Remark / Detail</label>
-                        <input type="text" name="deduction_remark" id="deduction_remark" class="form-control" placeholder="Description...">
-                    </div>
-                </div>
-
-                {{-- 5. Totals --}}
-                <div class="row align-items-end">
                     <div class="col-md-6">
-                        <label>Payment Date</label>
+                        <div class="card border-left-success h-100 py-2">
+                            <div class="card-body">
+                                <label class="form-label text-success fw-bold"><i class="bi bi-plus-circle me-1"></i> Add Allowance</label>
+                                <input type="number" step="0.01" name="allowance" id="allowance" class="form-control calc-trigger mb-2" value="0">
+                                <input type="text" name="allowance_remark" id="allowance_remark" class="form-control form-control-sm" placeholder="Reason (e.g. Mileage, Bonus)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-left-danger h-100 py-2">
+                            <div class="card-body">
+                                <label class="form-label text-danger fw-bold"><i class="bi bi-dash-circle me-1"></i> Add Deduction</label>
+                                <input type="number" step="0.01" name="deduction" id="deduction" class="form-control calc-trigger mb-2" value="0">
+                                <input type="text" name="deduction_remark" id="deduction_remark" class="form-control form-control-sm" placeholder="Reason (e.g. Unpaid Leave, Advance)">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4 p-3 bg-dark rounded mx-1 align-items-center">
+                    <div class="col-md-6">
+                        <label class="text-white">Payment Date</label>
                         <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}">
                     </div>
-                    <div class="col-md-6">
-                        <label class="fw-bold">Net Salary (Calculated)</label>
-                        <div class="input-group">
-                            <span class="input-group-text">RM</span>
-                            <input type="text" id="net_salary" class="form-control fw-bold bg-light" readonly value="0.00">
-                        </div>
+                    <div class="col-md-6 text-end">
+                        <label class="text-white-50 small d-block">ESTIMATED NET PAYOUT</label>
+                        <h2 class="text-success fw-bold mb-0">RM <span id="net_salary_text">0.00</span></h2>
+                        <input type="hidden" name="net_salary" id="net_salary_val">
                     </div>
                 </div>
 
                 <div class="mt-4 text-end">
-                    <button type="submit" class="btn btn-primary px-5"><i class="bi bi-save"></i> Generate Payroll</button>
+                    <button type="submit" class="btn btn-primary btn-lg px-5 shadow-sm">
+                        <i class="bi bi-check2-all me-2"></i>Generate & Save Payroll
+                    </button>
                 </div>
             </form>
         </div>
@@ -171,117 +140,107 @@
 @push('scripts')
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
-    $(document).ready(function() {
-        $('#select-staff').select2({
-            theme: 'bootstrap-5',
-            placeholder: "Search staff...",
-            width: '100%'
-        });
+function filterMonths() {
+    const yearInput = document.getElementById('payroll_year');
+    const monthSelect = document.getElementById('payroll_month');
+    
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; 
 
-        // Logic when Staff is selected
-        $('#select-staff').on('change', function() {
-            var selected = $(this).find(':selected');
-            var type = selected.data('type'); // Full-Time, Part-Time, Contract
-            var salary = parseFloat(selected.data('salary')) || 0;
-            var rate = parseFloat(selected.data('rate')) || 0;
-            var expiry = selected.data('expiry');
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
 
-            // 1. Reset Warnings
-            $('#contract-alert').hide();
+    monthSelect.innerHTML = '';
 
-            // 2. Handle Employment Types
-            if (type === 'Part-Time') {
-                $('#part-time-box').slideDown(); // Show hourly inputs
-                $('#basic_salary').prop('readonly', true).val(0); // Lock basic salary
-                $('#hourly_rate').val(rate);
-                $('#hours_worked').val('').focus();
-            } else {
-                $('#part-time-box').slideUp(); // Hide hourly inputs
-                $('#basic_salary').prop('readonly', false).val(salary); // Auto-fill Fixed Salary
+    for (let i = 1; i <= currentMonth; i++) {
+        let option = document.createElement('option');
+        
+        option.value = i; 
+        option.text = monthNames[i - 1];
+        
+        if (i === currentMonth) option.selected = true;
+        
+        monthSelect.appendChild(option);
+    }
+}
+
+function calculateNet() {
+    let basic = parseFloat($('#basic_salary').val()) || 0;
+    let allowance = parseFloat($('#allowance').val()) || 0;
+    let deduction = parseFloat($('#deduction').val()) || 0;
+    let type = $('#select-staff').find(':selected').data('type');
+
+    if (type === 'Part-Time') {
+        let rate = parseFloat($('#hourly_rate').val()) || 0;
+        let hours = parseFloat($('#hours_worked').val()) || 0;
+        basic = rate * hours;
+        $('#basic_salary').val(basic.toFixed(2));
+    }
+
+    let net = (basic + allowance) - deduction;
+    $('#net_salary_text').text(net.toLocaleString(undefined, {minimumFractionDigits: 2}));
+    $('#net_salary_val').val(net.toFixed(2));
+}
+
+$(document).ready(function() {
+    filterMonths();
+    
+    $('#select-staff').select2({
+        theme: 'bootstrap-5',
+        width: '100%'
+    });
+
+    $('#select-staff').on('change', function() {
+        let selected = $(this).find(':selected');
+        let type = selected.data('type');
+        let salary = parseFloat(selected.data('salary')) || 0;
+        let rate = parseFloat(selected.data('rate')) || 0;
+        let expiry = selected.data('expiry');
+        let joinDateStr = selected.data('join');
+
+        $('#contract-alert').hide();
+
+        if (type === 'Part-Time') {
+            $('#part-time-box').slideDown();
+            $('#basic_salary').prop('readonly', true).val(0);
+            $('#hourly_rate').val(rate);
+        } else {
+            $('#part-time-box').slideUp();
+            $('#basic_salary').prop('readonly', false).val(salary);
+        }
+
+        // Check Expiry
+        if (type === 'Contract' && expiry) {
+            let today = new Date().toISOString().split('T')[0];
+            if (expiry < today) {
+                $('#contract-alert').show().html('<i class="bi bi-exclamation-octagon"></i> BLOCK: Contract expired on ' + expiry);
             }
+        }
 
-            // 3. Handle Contract Expiry Check
-            if (type === 'Contract' && expiry) {
-                var today = new Date().toISOString().split('T')[0];
-                if (expiry < today) {
-                    $('#contract-alert').show().html('<i class="bi bi-exclamation-octagon"></i> BLOCK: Contract expired on ' + expiry);
+        if (joinDateStr) {
+            let joinDate = new Date(joinDateStr);
+            let selectedMonth = $('#payroll_month').val();
+            let selectedYear = parseInt($('#payroll_year').val());
+            let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            
+            if (joinDate.getMonth() === months.indexOf(selectedMonth) && joinDate.getFullYear() === selectedYear) {
+                if (joinDate.getDate() > 1) {
+                    Swal.fire({
+                        title: 'Pro-rata Required',
+                        text: `Staff joined on ${joinDateStr}. Adjust Basic Salary for partial month.`,
+                        icon: 'info'
+                    });
                 }
             }
-
-            calculateNet();
-        });
-
-        // SMART REMARK LOGIC
-        $('.remark-autofill').on('change', function() {
-            var selectedText = $(this).val();
-            var targetId = $(this).data('target');
-
-            // 1. Auto-Fill: Copy selection to the text box
-            if (selectedText) {
-                $('#' + targetId).val(selectedText);
-            } else {
-                $('#' + targetId).val('');
-            }
-        });
-
-        // SHORT-CODE SYSTEM (Optional Power User Feature)
-        // If admin types "OT" in the remark box and hits space, it expands.
-        $('input[name$="_remark"]').on('keyup', function(e) {
-            if (e.code === 'Space') {
-                var val = $(this).val();
-
-                // Define Short-Codes
-                var codes = {
-                    "OT ": "Overtime Payment ",
-                    "UL ": "Unpaid Leave Deduction ",
-                    "PH ": "Public Holiday Pay "
-                };
-
-                // Check if value matches a short code
-                Object.keys(codes).forEach(function(code) {
-                    if (val.endsWith(code)) {
-                        // Replace the short code with the full text
-                        var newVal = val.slice(0, -code.length) + codes[code];
-                        $(this).val(newVal);
-                    }
-                }.bind(this));
-            }
-        });
-
-        // PRO-RATA AUTO DETECT (System Generated Remark)
-        $('#select-staff').on('change', function() {
-            var selected = $(this).find(':selected');
-            var joinDate = new Date(selected.data('join')); // Assuming you passed data-join in the option
-            var selectedMonth = $('#month').val();
-            var selectedYear = $('#year').val();
-
-            // Check if joined in selected month/year
-            // (Simplified logic for demonstration)
-            // If detected, auto-fill the remark:
-            // $('#allowance_remark').val('Pro-rata salary for Join Date: ' + joinDate);
-        });
-
-        // Live Calculation
-        $('.calc-trigger').on('input', calculateNet);
-
-        function calculateNet() {
-            var basic = parseFloat($('#basic_salary').val()) || 0;
-
-            // If Part-Time, override basic with (Hours * Rate)
-            if ($('#part-time-box').is(':visible')) {
-                var hours = parseFloat($('#hours_worked').val()) || 0;
-                var rate = parseFloat($('#hourly_rate').val()) || 0;
-                basic = hours * rate;
-                $('#basic_salary').val(basic.toFixed(2)); // Update the hidden basic field
-            }
-
-            var allowance = parseFloat($('#allowance').val()) || 0;
-            var deduction = parseFloat($('#deduction').val()) || 0;
-            var net = (basic + allowance) - deduction;
-
-            $('#net_salary').val(net.toFixed(2));
         }
+        calculateNet();
     });
+
+    $('.calc-trigger').on('input', calculateNet);
+});
 </script>
 @endpush
