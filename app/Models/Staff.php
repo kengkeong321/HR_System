@@ -8,15 +8,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Staff extends Model
 {
     protected $table = 'staff';
-    
-    // 1. Tell Laravel your custom primary key name
     protected $primaryKey = 'staff_id';
-
-    // 2. Since staff_id is AUTO_INCREMENT, set this to true
     public $incrementing = true;
-
     public $timestamps = false;
-    // 3. Ensure all form fields are in the fillable array
     protected $fillable = [
         'user_id', 
         'full_name', 

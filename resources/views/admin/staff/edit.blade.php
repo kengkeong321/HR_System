@@ -115,7 +115,6 @@
 </div>
 
 <script>
-    // Toggle fields on load and change
     function toggleRates() {
         const type = document.getElementById('employment_type').value;
         document.getElementById('basic_salary_group').style.display = (type === 'Part-Time') ? 'none' : 'block';

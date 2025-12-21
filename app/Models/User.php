@@ -7,22 +7,20 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+use App\States\User\UserStatusState;
+use App\States\User\ActiveState;
+use App\States\User\InactiveState;
+use App\States\User\SuspendedState;
+
 class User extends Authenticatable
 {
     const ROLE_ADMIN = 'Admin';
     const ROLE_HR = 'HR';
     const ROLE_FINANCE = 'Finance';
     const ROLE_STAFF = 'Staff';
-    
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    // Match the existing database in phpMyAdmin (table name is `User`)
     protected $table = 'user';
     protected $primaryKey = 'user_id';
     public $incrementing = true;
@@ -35,21 +33,10 @@ class User extends Authenticatable
         'status',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    // No automatic cast for SHA-256 stored passwords; provide helper
     public function verifyPassword(string $plain): bool
     {
         return hash('sha256', $plain) === $this->password;
@@ -60,19 +47,22 @@ class User extends Authenticatable
         return $this->hasOne(Staff::class, 'user_id', 'user_id');
     }
 
+    public function statusState(): UserStatusState
+    {
+        return match ($this->status) {
+            'Active'    => new ActiveState(),
+            'Inactive'  => new InactiveState(),
+            default     => new InactiveState(),
+        };
+    }
 
 
 public function staffRecord()
 {
-   
     return $this->hasOne(Staff::class, 'user_id', 'user_id');
 }
-
-
-
     public function trainings()
     {
-        
         return $this->belongsToMany(TrainingProgram::class, 'training_attendance', 'user_id', 'training_program_id')
                     ->withPivot('status') 
                     ->withTimestamps();

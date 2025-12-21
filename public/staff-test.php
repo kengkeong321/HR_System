@@ -13,7 +13,6 @@ header('Content-Type: text/html; charset=utf-8');
     th,td{text-align:left;padding:10px;border-bottom:1px solid #eee}
     th{background:#f8f9fa}
     
-    /* UPDATED PRE TAG STYLES */
     pre {
         background: #1e1e1e;
         color: #d4d4d4;
@@ -22,11 +21,9 @@ header('Content-Type: text/html; charset=utf-8');
         font-size: 13px;
         line-height: 1.5;
         
-        /* vertical scroll control */
         max-height: 500px; 
         overflow-y: auto; 
         
-        /* horizontal wrap control */
         white-space: pre-wrap; 
         word-wrap: break-word;
     }
@@ -87,8 +84,6 @@ header('Content-Type: text/html; charset=utf-8');
 
       const json = JSON.parse(txt);
       
-      /* UPDATED OUTPUT FORMATTING */
-      // JSON.stringify(data, replacer, spaces) -> the '4' creates the indentation
       const prettyJson = JSON.stringify(json, null, 4);
       debug.textContent = `HTTP ${res.status}\nTimestamp: ${json.timestamp || 'N/A'}\n\n${prettyJson}`;
 
