@@ -49,7 +49,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/admin/settings', [SettingController::class, 'update'])->name('admin.settings.update');
     Route::get('/admin/leave', [LeaveController::class, 'adminIndex'])->name('leave.index');
 
-    // Use PATCH for state updates to comply with Data Protection [138]
     Route::patch('/admin/leave/{id}/update', [LeaveController::class, 'adminUpdate'])->name('leave.update');
 
     // --- Staff Payslip View ---
