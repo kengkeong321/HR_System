@@ -78,43 +78,6 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
         ->name('users.toggleStatus')
         ->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Payroll Management
-    |--------------------------------------------------------------------------
-    
-    Route::post('payroll/generate', [PayrollController::class, 'generateBatch'])->name('payroll.generateBatch');
-
-    Route::get('payroll/batch/{id}', [PayrollController::class, 'show'])->name('payroll.batch_view');
-
-    Route::post('payroll/batch/{id}/approve-l1', [PayrollController::class, 'approveL1'])->name('payroll.approve_l1');
-    Route::post('payroll/batch/{id}/approve-l2', [PayrollController::class, 'approveL2'])->name('payroll.approve_l2');
-
-    Route::post('payroll/batch/{id}/reject', [PayrollController::class, 'reject'])->name('payroll.reject');
-    Route::get('payroll/batch/{id}/export', [PayrollController::class, 'exportReport'])->name('payroll.export');
-
-    Route::prefix('payroll')->name('payroll.')->group(function () {
-        Route::get('/settings', [PayrollSettingController::class, 'index'])->name('settings.index');
-        Route::post('/settings/update', [PayrollSettingController::class, 'update'])->name('settings.update');
-    });
-    Route::resource('payroll', PayrollController::class)->except(['show', 'create', 'store']);
-
-
-    
-    |--------------------------------------------------------------------------
-    | Allowance (Admin only)
-    |--------------------------------------------------------------------------
-    
-    Route::prefix('claims')->name('claims.')->group(function () {
-
-        Route::get('/', [ClaimController::class, 'index'])->name('index');
-
-        Route::post('/{id}/approve', [ClaimController::class, 'approve'])->name('approve');
-
-        Route::post('/{id}/reject', [ClaimController::class, 'reject'])->name('reject');
-    });
-
-*/
     // --- Faculty, Department, Course CRUD ---
     Route::resource('faculties', \App\Http\Controllers\Admin\FacultyController::class)->except(['show', 'destroy']);
     // Positions module
@@ -166,18 +129,15 @@ Route::middleware(['auth', 'role:HR,Finance,Admin'])->prefix('admin')->name('adm
         Route::get('/', [PayrollController::class, 'index'])->name('index');
         Route::get('/{id}/edit', [PayrollController::class, 'edit'])->name('edit');
         Route::put('/{id}/update', [PayrollController::class, 'update'])->name('update'); 
-        Route::post('/batch/{id}/reject', [PayrollController::class, 'reject'])->name('reject'); 
         Route::get('/batch/{id}/export', [PayrollController::class, 'exportReport'])->name('export');
 
-        Route::get('/batch/{id}', [PayrollController::class, 'show'])
-            ->name('batch_view');
+        Route::get('/batch/{id}', [PayrollController::class, 'show'])->name('batch_view');
 
         Route::post('/generate', [PayrollController::class, 'generateBatch'])->name('generateBatch');
         Route::post('/batch/{id}/approve-l1', [PayrollController::class, 'approveL1'])->name('approve_l1');
         Route::post('/batch/{id}/approve-l2', [PayrollController::class, 'approveL2'])->name('approve_l2');
 
-        Route::post('/batch/{id}/reject', [PayrollController::class, 'reject'])
-            ->name('reject')
+        Route::post('/batch/{id}/reject', [PayrollController::class, 'reject'])->name('reject')
             ->middleware('role:Finance,Admin');
 
         Route::prefix('settings')->name('settings.')->group(function () {

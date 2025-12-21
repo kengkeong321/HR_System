@@ -42,7 +42,6 @@ return array(
     'App\\Http\\Middleware\\EnsureUserIsAdmin' => $baseDir . '/app/Http/Middleware/EnsureUserIsAdmin.php',
     'App\\Http\\Middleware\\EnsureUserIsStaffOnly' => $baseDir . '/app/Http/Middleware/EnsureUserIsStaffOnly.php',
     'App\\Http\\Requests\\StorePayrollRequest' => $baseDir . '/app/Http/Requests/StorePayrollRequest.php',
-    'App\\Listeners\\NotifyAttendanceChange' => $baseDir . '/app/Listeners/NotifyAttendanceChange.php',
     'App\\Models\\Attendance' => $baseDir . '/app/Models/Attendance.php',
     'App\\Models\\Claim' => $baseDir . '/app/Models/Claim.php',
     'App\\Models\\ClaimCategory' => $baseDir . '/app/Models/ClaimCategory.php',
