@@ -694,7 +694,6 @@ class ComposerStaticInit8231b83ddd7663aeffa6e25b0d5255c0
         'App\\Http\\Middleware\\EnsureUserIsAdmin' => __DIR__ . '/../..' . '/app/Http/Middleware/EnsureUserIsAdmin.php',
         'App\\Http\\Middleware\\EnsureUserIsStaffOnly' => __DIR__ . '/../..' . '/app/Http/Middleware/EnsureUserIsStaffOnly.php',
         'App\\Http\\Requests\\StorePayrollRequest' => __DIR__ . '/../..' . '/app/Http/Requests/StorePayrollRequest.php',
-        'App\\Listeners\\NotifyAttendanceChange' => __DIR__ . '/../..' . '/app/Listeners/NotifyAttendanceChange.php',
         'App\\Models\\Attendance' => __DIR__ . '/../..' . '/app/Models/Attendance.php',
         'App\\Models\\Claim' => __DIR__ . '/../..' . '/app/Models/Claim.php',
         'App\\Models\\ClaimCategory' => __DIR__ . '/../..' . '/app/Models/ClaimCategory.php',
