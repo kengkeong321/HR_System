@@ -43,20 +43,16 @@
 
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Position</label>
-                    <input name="position" class="form-control @error('position') is-invalid @enderror" value="{{ old('position') }}" disabled>
-                    @error('position') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Department</label>
-                    <select name="depart_id" class="form-select @error('depart_id') is-invalid @enderror" disabled>
-                        <option value="">Select Department</option>
-                        @foreach($departments as $dept)
-                            <option value="{{ $dept->depart_id }}" {{ old('depart_id') == $dept->depart_id ? 'selected' : '' }}>
-                                {{ $dept->depart_name ?? $dept->depart_id }}
+                    <select name="position" class="form-select @error('position') is-invalid @enderror">
+                        <option value="">-- Select Position --</option>
+                        @foreach($positions as $pos)
+                            <option value="{{ $pos->name }}" 
+                                {{ old('position', $staff->position ?? '') == $pos->name ? 'selected' : '' }}>
+                                {{ $pos->name }}
                             </option>
                         @endforeach
                     </select>
+                    @error('position') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 <hr class="my-4">
@@ -119,57 +115,89 @@
 </div>
 
 <script>
-
-const nameInput = document.getElementById('full_name');
+    const nameInput = document.getElementById('full_name');
     const emailInput = document.getElementById('email');
     const feedback = document.getElementById('email-feedback');
-
-    nameInput.addEventListener('input', async function() {
-        let nameValue = this.value.trim();
-        if (nameValue.length < 3) return;
-
-        // 1. Generate Base Handle (e.g., loongwl)
-        let parts = nameValue.split(/\s+/);
-        let firstName = parts[0].toLowerCase();
-        let initials = parts.slice(1).map(p => p[0].toLowerCase()).join('');
-        let baseHandle = firstName + initials;
-        let domain = "@tarc.edu.my";
-
-        // 2. AJAX Check for uniqueness
-        let currentHandle = baseHandle;
-        let counter = 1;
-        let isUnique = false;
-
-        while (!isUnique) {
-            let emailToCheck = (counter === 1 ? currentHandle : currentHandle + counter) + domain;
-            
-            let response = await fetch(`{{ route('admin.staff.checkEmail') }}?email=${emailToCheck}`);
-            let data = await response.json();
-
-            if (!data.exists) {
-                emailInput.value = emailToCheck;
-                isUnique = true;
-                
-                // Show warning if a number was added
-                if (counter > 1) {
-                    emailInput.classList.add('is-warning');
-                    feedback.style.display = 'block';
-                    feedback.innerText = `Handle '${currentHandle}' was taken. Suggested: ${emailToCheck}`;
-                } else {
-                    emailInput.classList.remove('is-warning');
-                    feedback.style.display = 'none';
-                }
-            } else {
-                counter++; // Keep incrementing until a free email is found
-            }
-        }
-    });
+    // Get the submit button to control it
+    const submitBtn = document.querySelector('button[type="submit"]');
     
-    // Logic to toggle Salary vs Hourly Rate fields
+    let nameFeedback = document.getElementById('name-feedback');
+    if (!nameFeedback) {
+        nameFeedback = document.createElement('div');
+        nameFeedback.id = 'name-feedback';
+        nameFeedback.className = 'text-danger small mt-1';
+        nameInput.parentNode.appendChild(nameFeedback);
+    }
+
+    let timeout = null;
+
+    nameInput.addEventListener('input', function() {
+        clearTimeout(timeout);
+        
+        timeout = setTimeout(async () => {
+            let nameValue = nameInput.value.trim();
+            if (nameValue.length < 3) return;
+
+            try {
+                let nameCheckResponse = await fetch(`{{ route('admin.staff.checkName') }}?name=${encodeURIComponent(nameValue)}`);
+                let nameCheckData = await nameCheckResponse.json();
+
+                if (nameCheckData.exists) {
+                    nameInput.classList.add('is-invalid');
+                    nameFeedback.innerText = "⚠️ A staff record with this name already exists.";
+                    
+                    // LOCK THE BUTTON
+                    submitBtn.disabled = true;
+                    submitBtn.classList.replace('btn-primary', 'btn-danger');
+                    submitBtn.innerText = "Duplicate Name Detected";
+                } else {
+                    nameInput.classList.remove('is-invalid');
+                    nameFeedback.innerText = "";
+                    
+                    // UNLOCK THE BUTTON
+                    submitBtn.disabled = false;
+                    submitBtn.classList.replace('btn-danger', 'btn-primary');
+                    submitBtn.innerText = "Save Staff Record";
+                }
+            } catch (e) { console.error("Name check failed"); }
+
+            // Email Generation Logic
+            let parts = nameValue.split(/\s+/);
+            let firstName = parts[0].toLowerCase();
+            let initials = parts.slice(1).map(p => p[0].toLowerCase()).join('');
+            let baseHandle = firstName + initials;
+            let domain = "@tarc.edu.my";
+
+            let currentHandle = baseHandle;
+            let counter = 1;
+            let isUnique = false;
+
+            while (!isUnique) {
+                let emailToCheck = (counter === 1 ? currentHandle : currentHandle + counter) + domain;
+                let response = await fetch(`{{ route('admin.staff.checkEmail') }}?email=${emailToCheck}`);
+                let data = await response.json();
+
+                if (!data.exists) {
+                    emailInput.value = emailToCheck;
+                    isUnique = true;
+                    if (counter > 1) {
+                        emailInput.classList.add('is-warning');
+                        feedback.style.display = 'block';
+                        feedback.innerText = `Handle taken. Suggested: ${emailToCheck}`;
+                    } else {
+                        emailInput.classList.remove('is-warning');
+                        feedback.style.display = 'none';
+                    }
+                } else {
+                    counter++; 
+                }
+            }
+        }, 500);
+    });
+
     document.getElementById('employment_type').addEventListener('change', function() {
         const salaryGroup = document.getElementById('basic_salary_group');
         const hourlyGroup = document.getElementById('hourly_rate_group');
-        
         if (this.value === 'Part-Time') {
             salaryGroup.classList.add('d-none');
             hourlyGroup.classList.remove('d-none');
