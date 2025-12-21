@@ -45,15 +45,15 @@ Route::get('/attendance/summary', function (Request $request) {
 
 
 //Dephnie Ong Yan Yee
-Route::get('/api/attendance-summary', function (Illuminate\Http\Request $request, PayrollService $service) {
+Route::get('/attendance-summary', function (Request $request, PayrollService $service) {
     $userId = $request->query('user_id');
     $month = $request->query('month');
     $year = $request->query('year');
 
-    $userData = DB::table('user') 
-        ->join('staff', 'user.user_id', '=', 'staff.user_id') 
+    $userData = DB::table('user')
+        ->join('staff', 'user.user_id', '=', 'staff.user_id')
         ->where('user.user_id', $userId)
-        ->select('user.user_name', 'staff.employment_type') 
+        ->select('user.user_name', 'staff.employment_type')
         ->first();
 
     $totalHours = $service->calculateTotalWorkedHours($userId, $month, $year);
@@ -62,7 +62,7 @@ Route::get('/api/attendance-summary', function (Illuminate\Http\Request $request
         'status' => 'ok',
         'data' => [
             'user_id' => $userId,
-            'user_name' => $userData->user_name ?? 'Unknown User', 
+            'user_name' => $userData->user_name ?? 'Unknown User',
             'total_hours' => round($totalHours, 2),
             'employment_type' => $userData->employment_type ?? 'N/A'
         ]
