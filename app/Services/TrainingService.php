@@ -48,12 +48,12 @@ class TrainingService
         $this->checkAdmin();
         
         Validator::make($data, [
-            'title'       => 'required|string|max:255',
-            'venue'       => 'required|string|max:255',
+            'title'       => 'required|string|max:100',
+            'venue'       => 'required|string|max:100',
             'capacity'    => 'required|integer|min:1',
             'start_time'  => 'required|date',
             'end_time'    => 'required|date|after:start_time',
-            'description' => 'nullable|string|max:1000',
+            'description' => 'nullable|string|max:100',
         ])->validate();
 
         return TrainingProgram::create($data);
@@ -68,8 +68,8 @@ class TrainingService
         $training = TrainingProgram::findOrFail($id);
 
         Validator::make($data, [
-            'title'      => 'required|string|max:255',
-            'venue'      => 'required|string|max:255',
+            'title'      => 'required|string|max:100',
+            'venue'      => 'required|string|max:100',
             'capacity'   => 'required|integer|min:1',
             'start_time' => 'required|date',
             'end_time'   => 'required|date|after:start_time',
