@@ -147,13 +147,21 @@ class PayrollController extends Controller
             DB::beginTransaction();
 
             $monthYear = sprintf('%d-%02d', $request->year, $request->month);
+            $batch = PayrollBatch::where('month_year', $monthYear)->first();
 
-            $batch = PayrollBatch::firstOrCreate(
-                ['month_year' => $monthYear],
-                ['status' => 'Draft', 'total_staff' => 0, 'total_amount' => 0]
-            );
+            if ($batch && $batch->status === 'Paid') {
+                DB::rollBack();
+                return back()->with('error', "Cannot regenerate. The payroll batch for {$monthYear} has already been PAID.");
+            }
 
-            if (!$batch->wasRecentlyCreated) {
+            if (!$batch) {
+                $batch = PayrollBatch::create([
+                    'month_year' => $monthYear,
+                    'status' => 'Draft',
+                    'total_staff' => 0,
+                    'total_amount' => 0
+                ]);
+            } else {
                 $batch->update(['status' => 'Draft']);
             }
 
