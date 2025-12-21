@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
-// 1. ADD THIS IMPORT AT THE TOP
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
@@ -31,10 +30,8 @@ class AuthController extends Controller
 
         Auth::login($user);
 
-        // Store session data for UI consistency
         session(["user_id" => $user->user_id, "user_name" => $user->user_name, "role" => $user->role]);
 
-        // Redirection Logic [89]
         if (in_array($user->role, ['Admin', 'HR', 'Finance'])) {
             return redirect()->route('admin.dashboard');
         }elseif ($user->role === 'Staff') {

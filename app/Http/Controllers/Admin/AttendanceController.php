@@ -1,5 +1,5 @@
 <?php
-
+//Mu Jun Yi
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -14,10 +14,6 @@ use Illuminate\Support\Facades\Cache;
 class AttendanceController extends Controller
 {
 
-// Add these at the very top of your file
-
-
-// Update your index method
 public function index(Request $request)
 {
     $query = \App\Models\Attendance::with(['user.staff']); 
@@ -29,7 +25,6 @@ public function index(Request $request)
     $attendances = $query->orderBy('attendance_date', 'desc')->get();
     $posMap = Cache::remember('positions_map', 600, function () {
         try {
-            // Set a 3-second timeout so the page doesn't hang forever
             $response = Http::timeout(3)->get(url('/api/positions'), [
                 'requestID' => 'REQ-' . time(),
                 'timeStamp' => now()->format('Y-m-d H:i:s')
@@ -42,7 +37,7 @@ public function index(Request $request)
                 }
             }
         } catch (\Exception $e) {
-            return []; // Return empty if teammate's API is down
+            return []; 
         }
         return [];
     });
@@ -54,7 +49,6 @@ public function index(Request $request)
     {
         $search = $request->input('search');
 
-        // FIX: Always initialize as an empty array, not null
         $users = [];
 
         if ($search) {
@@ -64,7 +58,6 @@ public function index(Request $request)
                 ->get();
         }
 
-        // Pass the variable to the view
         return view('admin.attendance', compact('users', 'search'));
     }
 
@@ -79,7 +72,6 @@ public function index(Request $request)
 
         $today = now()->toDateString();
 
-        // Check if a record already exists for this user today
         $existingRecord = \App\Models\Attendance::where('user_id', $validated['user_id'])
             ->where('attendance_date', $today)
             ->first();
@@ -87,7 +79,6 @@ public function index(Request $request)
         // LOGIC FOR CLOCK IN
         if ($request->action_type == 'in') {
             if ($existingRecord) {
-                // Error Notification: Already Clocked In
                 return redirect()->back()
                     ->with('error', 'You have already clocked in today!')
                     ->withInput();
@@ -104,7 +95,6 @@ public function index(Request $request)
             return redirect()->back()->with('success', 'Attendance marked successfully!');
         }
 
-        // LOGIC FOR CLOCK OUT
         if ($request->action_type == 'out') {
             if (!$existingRecord) {
                 return redirect()->back()
@@ -113,7 +103,6 @@ public function index(Request $request)
             }
 
             if ($existingRecord->clock_out_time) {
-                // Error Notification: Already Clocked Out
                 return redirect()->back()
                     ->with('error', 'You have already clocked out today!')
                     ->withInput();
@@ -136,7 +125,6 @@ public function index(Request $request)
 
     public function update(Request $request, $id)
     {
-        // Input Validation [11]
         $validated = $request->validate([
             'status' => 'required|string|in:Present,Absent,Late',
             'remarks' => 'nullable|string|max:255',
@@ -146,7 +134,6 @@ public function index(Request $request)
         $attendance = Attendance::findOrFail($id);
         $attendance->update($validated);
 
-        // Observer Pattern: Log the manual correction by Admin
         Log::info("Observer Notification: Admin edited Attendance ID " . $id . " for User " . $attendance->user_id);
 
         return redirect()->route('admin.attendance.index')->with('success', 'Record updated successfully!');
@@ -157,12 +144,10 @@ public function index(Request $request)
         $userId = session('user_id');
         $today = now()->toDateString();
 
-        // Fetch today's record to control the buttons
         $attendance = \App\Models\Attendance::where('user_id', $userId)
             ->where('attendance_date', $today)
             ->first();
 
-        // Fetch the last 5 records for the history table
         $history = \App\Models\Attendance::where('user_id', $userId)
             ->orderBy('attendance_date', 'desc')
             ->take(5)
@@ -217,12 +202,10 @@ public function index(Request $request)
 
     public function getPositionsFromTeammate()
     {
-        // Mandatory Parameters for tracking
         $requestId = 'REQ-' . time();
         $timestamp = now()->format('Y-m-d H:i:s');
 
         try {
-            // Consuming the web service provided by your teammate
             $response = Http::get(url('/api/positions'), [
                 'requestID' => $requestId,
                 'timeStamp' => $timestamp
@@ -230,7 +213,6 @@ public function index(Request $request)
 
             if ($response->successful()) {
                 $json = $response->json();
-                // Validate the status field as per IFA agreement
                 if ($json['status'] === 'ok') {
                     return $json['data']; 
                 }
