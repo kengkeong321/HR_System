@@ -10,7 +10,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
   <style>
-    /* Sidebar layout with collapse behavior */
+
     body {
       min-height: 100vh;
     }
@@ -20,7 +20,7 @@
       transition: width .2s;
       position: sticky;
       top: 56px;
-      /* offset so it sits below the navbar */
+
       height: calc(100vh - 56px);
       overflow-y: auto;
       padding-bottom: 1rem;
@@ -52,7 +52,6 @@
       display: none;
     }
 
-    /* flash success message */
     .flash-message {
       position: fixed;
       top: -80px;
@@ -68,7 +67,6 @@
       opacity: 1;
     }
 
-    /* invalid field attention */
     @keyframes shake {
 
       10%,
@@ -104,7 +102,7 @@
     }
 
     nav[role="navigation"] svg {
-        width: 1.25rem; /* Equivalent to 20px */
+        width: 1.25rem; 
         height: 1.25rem;
         display: inline-block;
         vertical-align: middle;

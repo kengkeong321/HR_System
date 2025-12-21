@@ -18,7 +18,6 @@
       }
       .flash-message.show { top: 20px; opacity: 1; }
 
-      /* invalid field attention */
       @keyframes shake {
         10%, 90% { transform: translateX(-1px); }
         20%, 80% { transform: translateX(2px); }
@@ -78,7 +77,6 @@
           setTimeout(() => { flash.classList.remove('show'); setTimeout(() => flash.remove(), 500); }, 3050);
         }
 
-        // Per-field error focus
         const firstInvalid = document.querySelector('.is-invalid');
         if (firstInvalid) {
           try {

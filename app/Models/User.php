@@ -1,5 +1,5 @@
 <?php
-
+//Loong Wei Lim
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,16 +16,10 @@ class User extends Authenticatable
     const ROLE_HR = 'HR';
     const ROLE_FINANCE = 'Finance';
     const ROLE_STAFF = 'Staff';
-    
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    // Match the existing database in phpMyAdmin (table name is `User`)
+
     protected $table = 'user';
     protected $primaryKey = 'user_id';
     public $incrementing = true;
@@ -38,21 +32,11 @@ class User extends Authenticatable
         'status',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    // No automatic cast for SHA-256 stored passwords; provide helper
+
     public function verifyPassword(string $plain): bool
     {
         return hash('sha256', $plain) === $this->password;
