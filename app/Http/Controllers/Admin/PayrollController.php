@@ -1,5 +1,5 @@
 <?php
-
+//ephnie ong Yan Yee
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -221,6 +221,7 @@ class PayrollController extends Controller
 
         try {
             DB::beginTransaction();
+
             $payroll = Payroll::findOrFail($id);
 
             $inputs = [
@@ -242,8 +243,9 @@ class PayrollController extends Controller
             $this->payrollService->updateBatchTotals($payroll->batch_id);
 
             DB::commit();
+
             return redirect()->route('admin.payroll.batch_view', $payroll->batch_id)
-                ->with('success', 'Calculation updated with new statutory rates.');
+                ->with('success', 'Payroll adjusted and batch totals refreshed successfully.');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Update failed: ' . $e->getMessage());

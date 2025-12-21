@@ -80,9 +80,9 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
 
     /*
     |--------------------------------------------------------------------------
-    | Payroll Management (Admin Only)
+    | Payroll Management 
     |--------------------------------------------------------------------------
-    */
+   
     Route::post('payroll/generate', [PayrollController::class, 'generateBatch'])->name('payroll.generateBatch');
 
     Route::get('payroll/batch/{id}', [PayrollController::class, 'show'])->name('payroll.batch_view');
@@ -104,7 +104,7 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     |--------------------------------------------------------------------------
     | Allowance (Admin only)
     |--------------------------------------------------------------------------
-    */
+    
     Route::prefix('claims')->name('claims.')->group(function () {
 
         Route::get('/', [ClaimController::class, 'index'])->name('index');
@@ -113,7 +113,7 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
 
         Route::post('/{id}/reject', [ClaimController::class, 'reject'])->name('reject');
     });
-
+*/
 
     // --- Faculty, Department, Course CRUD ---
     Route::resource('faculties', \App\Http\Controllers\Admin\FacultyController::class)->except(['show', 'destroy']);
@@ -144,33 +144,51 @@ Route::prefix('admin')->name('admin.')->middleware(EnsureUserIsAdmin::class)->gr
     Route::post('users/page', [\App\Http\Controllers\Admin\UserController::class, 'page'])->name('users.page')->middleware(\App\Http\Middleware\EnsureUserIsAdmin::class);
 });
 
-// Positions API (Active only) - returns active positions list for dropdowns
-Route::get('/api/positions', [\App\Http\Controllers\Api\PositionController::class, 'index'])->name('api.positions.index');
+/*
+|--------------------------------------------------------------------------
+| Access Control for Payroll & Allowance
+|--------------------------------------------------------------------------
+*/
 
-// Staff routes
-Route::prefix('staff')->name('staff.')->middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'role:HR,Finance,Admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    Route::get('/dashboard', function () {
-        return view('staff.dashboard');
-    })->name('dashboard');
+    // --- Claims Module ---
+    Route::prefix('claims')->name('claims.')->group(function () {
+        Route::get('/', [ClaimController::class, 'index'])->name('index');
 
-    // Attendance
-    Route::get('/attendance', [AttendanceController::class, 'staffCreate'])->name('attendance.create');
-    Route::post('/attendance/store', [AttendanceController::class, 'staffStore'])->name('attendance.store');
+        Route::post('/{id}/approve', [ClaimController::class, 'approve'])
+            ->name('approve')
+            ->middleware('role:HR,Admin');
 
-    // payslip
-    Route::get('/staff/my-payslips', [PayslipController::class, 'myHistory'])->name('staff.payroll.my_payslips');
-    Route::get('/payroll/{id}/export', [PayrollController::class, 'exportSlip'])->name('payroll.export');
+        Route::post('/{id}/reject', [ClaimController::class, 'reject'])
+            ->name('reject')
+            ->middleware('role:HR,Admin');
+    });
 
-    // leave
-    Route::get('/leave', [LeaveController::class, 'staffIndex'])->name('leave.index');
-    Route::post('/leave/store', [LeaveController::class, 'store'])->name('leave.store');
+    // --- Payroll Module ---
+    Route::prefix('payroll')->name('payroll.')->group(function () {
+        Route::get('/', [PayrollController::class, 'index'])->name('index');
+        Route::get('/{id}/edit', [PayrollController::class, 'edit'])->name('edit');
+        Route::put('/{id}/update', [PayrollController::class, 'update'])->name('update'); 
+        Route::post('/batch/{id}/reject', [PayrollController::class, 'reject'])->name('reject'); 
+        Route::get('/batch/{id}/export', [PayrollController::class, 'exportReport'])->name('export');
 
-    // claims
-    Route::get('/claims/create', [StaffClaimController::class, 'create'])->name('claims.create');
-    Route::post('/claims/store', [StaffClaimController::class, 'store'])->name('claims.store');
+        Route::get('/batch/{id}', [PayrollController::class, 'show'])
+            ->name('batch_view');
 
-    Route::get('/claims/history', [StaffClaimController::class, 'index'])->name('claims.index');
+        Route::post('/generate', [PayrollController::class, 'generateBatch'])->name('generateBatch');
+        Route::post('/batch/{id}/approve-l1', [PayrollController::class, 'approveL1'])->name('approve_l1');
+        Route::post('/batch/{id}/approve-l2', [PayrollController::class, 'approveL2'])->name('approve_l2');
+
+        Route::post('/batch/{id}/reject', [PayrollController::class, 'reject'])
+            ->name('reject')
+            ->middleware('role:Finance,Admin');
+
+        Route::prefix('settings')->name('settings.')->group(function () {
+            Route::get('/', [PayrollSettingController::class, 'index'])->name('index');
+            Route::post('/update', [PayrollSettingController::class, 'update'])->name('update');
+        });
+    });
 });
 
 /*
@@ -258,9 +276,9 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    Route::get('/admin/attendance/test-api', function () {
-        return view('admin.attendance.api_test');
-    })->name('admin.attendance.test_api');
+Route::get('/admin/attendance/test-api', function () {
+    return view('admin.attendance.api_test');
+})->name('admin.attendance.test_api');
 
 
 /*

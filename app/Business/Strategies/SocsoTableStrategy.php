@@ -1,4 +1,5 @@
 <?php
+//Dephnie Ong Yan Yee
 
 namespace App\Business\Strategies;
 
@@ -6,15 +7,26 @@ use App\Business\Strategies\Contracts\SalaryComponentInterface;
 use App\Models\Staff;
 use Illuminate\Support\Facades\DB;
 
-class SocsoTableStrategy implements SalaryComponentInterface 
+class SocsoTableStrategy implements SalaryComponentInterface
 {
-    public function calculate(Staff $staff, array $data): float
+    public function calculate(Staff $staff, array $data): array
     {
-        $salary = (float) ($data['basic_salary'] ?? 0);
-        $type   = $data['type'] ?? 'employee';
+        $salary = (float) ($data['calculated_basic'] ?? $staff->basic_salary);
 
-        $salaryForCalculation = $salary;
+        if ($staff->employment_type === 'Casual') {
+            return [
+                'socso_employee_rm' => 0,
+                'socso_employer_rm' => 0,
+                'eis_employee_rm' => 0,
+                'eis_employer_rm' => 0
+            ];
+        }
 
+        $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
+        $wageCeiling = (float) ($configs['socso_ceiling'] ?? 6000.0);
+        $salaryForCalculation = min($salary, $wageCeiling);
+
+        // SOCSO 
         $rateRecord = DB::table('socso_rates')
             ->where('min_salary', '<=', $salaryForCalculation)
             ->where(function ($query) use ($salaryForCalculation) {
@@ -23,14 +35,25 @@ class SocsoTableStrategy implements SalaryComponentInterface
             })
             ->first();
 
+        // EIS Calculation 
+        $eisRate = 0.002;
+        $eisEmployee = round($salaryForCalculation * $eisRate, 2);
+        $eisEmployer = round($salaryForCalculation * $eisRate, 2);
+
         if (!$rateRecord) {
-            return 0.00;
+            return [
+                'socso_employee_rm' => 0,
+                'socso_employer_rm' => 0,
+                'eis_employee_rm' => $eisEmployee,
+                'eis_employer_rm' => $eisEmployer
+            ];
         }
 
-        if ($type === 'employee') {
-            return (float) $rateRecord->employee_share;
-        }
-
-        return (float) $rateRecord->employer_share;
+        return [
+            'socso_employee_rm' => (float) $rateRecord->employee_share,
+            'socso_employer_rm' => (float) $rateRecord->employer_share,
+            'eis_employee_rm' => $eisEmployee,
+            'eis_employer_rm' => $eisEmployer
+        ];
     }
 }

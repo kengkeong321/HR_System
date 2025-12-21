@@ -1,3 +1,5 @@
+{{-- Dephnie Ong Yan Yee --}}
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -28,7 +30,6 @@
 </head>
 <body>
     @php
-        // Decode the snapshot breakdown
         $data = is_string($payroll->breakdown) ? json_decode($payroll->breakdown, true) : $payroll->breakdown;
         $calc = $data['calculated_amounts'] ?? [];
         $rates = $data['statutory_rates'] ?? [];
