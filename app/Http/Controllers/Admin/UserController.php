@@ -58,7 +58,8 @@ class UserController extends Controller
                 'status'    => $request->status,
             ]);
 
-            // 2. Create Staff info for EVERYONE
+            $user->statusState()->handleStatusChange($user);
+            
             $isHourly = in_array($request->employment_type, ['Part-Time', 'Intern']);
 
             Staff::create([
@@ -110,6 +111,7 @@ class UserController extends Controller
     {
         $user->status = $user->status === 'Active' ? 'Inactive' : 'Active';
         $user->save();
+        $user->statusState()->handleStatusChange($user);
         return redirect()->route('admin.users.index')->with('success', 'User status updated');
     }
 }
