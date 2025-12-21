@@ -1,3 +1,4 @@
+{{-- Loong Wei Lim --}}
 @extends('layouts.admin')
 
 @section('title', 'Create Staff')
@@ -99,7 +100,35 @@
                 <h5 class="text-primary mb-3">Banking Details</h5>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Bank Name</label>
-                    <input name="bank_name" class="form-control" value="{{ old('bank_name') }}" placeholder="e.g. Maybank">
+                    <select name="bank_name" class="form-select @error('bank_name') is-invalid @enderror">
+                        <option value="">-- Select Bank --</option>
+                        @php
+                            $malaysiaBanks = [
+                                'Maybank' => 'Malayan Banking Berhad (Maybank)',
+                                'CIMB' => 'CIMB Bank Berhad',
+                                'Public Bank' => 'Public Bank Berhad',
+                                'RHB' => 'RHB Bank Berhad',
+                                'Hong Leong' => 'Hong Leong Bank Berhad',
+                                'AmBank' => 'AmBank Group',
+                                'UOB' => 'United Overseas Bank (Malaysia)',
+                                'OCBC' => 'OCBC Bank (Malaysia)',
+                                'HSBC' => 'HSBC Bank Malaysia',
+                                'Standard Chartered' => 'Standard Chartered Bank Malaysia',
+                                'Alliance Bank' => 'Alliance Bank Malaysia Berhad',
+                                'Affim Bank' => 'Affin Bank Berhad',
+                                'Bank Islam' => 'Bank Islam Malaysia Berhad',
+                                'Bank Muamalat' => 'Bank Muamalat Malaysia Berhad',
+                                'Agrobank' => 'Pertanian Bank Malaysia Berhad (Agrobank)',
+                                'BSN' => 'Bank Simpanan Nasional (BSN)'
+                            ];
+                        @endphp
+                        @foreach($malaysiaBanks as $code => $name)
+                            <option value="{{ $code }}" {{ old('bank_name') == $code ? 'selected' : '' }}>
+                                {{ $name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('bank_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="col-md-6 mb-3">
@@ -118,7 +147,6 @@
     const nameInput = document.getElementById('full_name');
     const emailInput = document.getElementById('email');
     const feedback = document.getElementById('email-feedback');
-    // Get the submit button to control it
     const submitBtn = document.querySelector('button[type="submit"]');
     
     let nameFeedback = document.getElementById('name-feedback');
@@ -146,7 +174,6 @@
                     nameInput.classList.add('is-invalid');
                     nameFeedback.innerText = "⚠️ A staff record with this name already exists.";
                     
-                    // LOCK THE BUTTON
                     submitBtn.disabled = true;
                     submitBtn.classList.replace('btn-primary', 'btn-danger');
                     submitBtn.innerText = "Duplicate Name Detected";
@@ -154,14 +181,12 @@
                     nameInput.classList.remove('is-invalid');
                     nameFeedback.innerText = "";
                     
-                    // UNLOCK THE BUTTON
                     submitBtn.disabled = false;
                     submitBtn.classList.replace('btn-danger', 'btn-primary');
                     submitBtn.innerText = "Save Staff Record";
                 }
             } catch (e) { console.error("Name check failed"); }
 
-            // Email Generation Logic
             let parts = nameValue.split(/\s+/);
             let firstName = parts[0].toLowerCase();
             let initials = parts.slice(1).map(p => p[0].toLowerCase()).join('');

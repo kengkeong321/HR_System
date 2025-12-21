@@ -1,109 +1,70 @@
 {{-- Dephnie Ong Yan Yee --}}
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>Payroll Disbursement Report - {{ $batch->month_year }}</title>
     <style>
-        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
-        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #444; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
-        .header p { margin: 5px 0; font-size: 12px; color: #666; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed; }
-        th, td { border: 1px solid #ccc; padding: 10px 6px; text-align: left; word-wrap: break-word; }
-        th { background-color: #f8f9fa; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #444; }
-        
-        tbody tr:nth-child(even) { background-color: #fafafa; }
-        
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 10px; color: #333; line-height: 1.2; }
+        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #444; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
+        th, td { border: 1px solid #ccc; padding: 6px 4px; text-align: left; word-wrap: break-word; }
+        th { background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; font-size: 9px; }
         .text-right { text-align: right; }
-        .text-center { text-align: center; }
         .fw-bold { font-weight: bold; }
-
-        .totals { margin-top: 30px; text-align: right; padding-right: 10px; }
-        .totals-box { 
-            display: inline-block; 
-            border: 2px solid #333; 
-            padding: 10px 20px; 
-            background-color: #f8f9fa;
-        }
-        .totals h3 { margin: 0; font-size: 14px; }
-
-        .remarks-text { font-style: italic; font-size: 9px; color: #555; }
-
-        .signatures { margin-top: 60px; width: 100%; page-break-inside: avoid; }
-        .sig-box { 
-            float: left; 
-            width: 28%; 
-            margin-right: 4%; 
-            text-align: center; 
-        }
-        .sig-line { border-top: 1px solid #000; margin-top: 40px; padding-top: 5px; }
-        .clear { clear: both; }
+        .totals-box { margin-top: 20px; text-align: right; border: 1px solid #333; padding: 10px; background: #f9f9f9; }
     </style>
 </head>
-
 <body>
     <div class="header">
-        <h1>Payroll Disbursement Report</h1>
-        <p><strong>Payment Batch:</strong> {{ $batch->month_year }}</p>
-        <p><strong>Generated On:</strong> {{ now()->toDayDateTimeString() }}</p>
+        <h1>University Payroll Disbursement Audit</h1>
+        <p>Batch ID: #{{ $batch->id }} | Period: {{ $batch->month_year }} | Status: {{ $batch->status }}</p>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th width="30px" class="text-center">#</th>
-                <th width="120px">Staff Name</th>
-                <th width="70px" class="text-center">Attendance</th>
-                <th width="80px">Bank Info</th>
-                <th width="100px">Account No.</th>
-                <th width="120px">Remarks</th>
-                <th width="90px" class="text-right">Net Salary (RM)</th>
+                <th width="20">#</th>
+                <th width="100">Staff Detail</th>
+                <th width="60" class="text-right">Basic (RM)</th>
+                <th width="60" class="text-right">Allowances</th>
+                <th width="60" class="text-right">Deductions*</th>
+                <th width="80" class="text-right">Net Salary</th>
+                <th width="120">Bank Account</th>
             </tr>
         </thead>
         <tbody>
             @foreach($payrolls as $index => $row)
+            @php
+                $breakdown = is_string($row->breakdown) ? json_decode($row->breakdown, true) : $row->breakdown;
+                $statutory = $breakdown['calculated_amounts'] ?? [];
+                $totalDeductions = ($statutory['epf_employee_rm'] ?? 0) + 
+                                   ($statutory['socso_employee_rm'] ?? 0) + 
+                                   ($statutory['eis_employee_rm'] ?? 0) + 
+                                   ($row->manual_deduction ?? 0);
+            @endphp
             <tr>
                 <td class="text-center">{{ $index + 1 }}</td>
-                <td class="fw-bold">{{ $row->staff->full_name }}</td>
-                <td class="text-center">{{ $row->attendance_count ?? 0 }} days</td>
-                <td>{{ $row->staff->bank_name ?? 'Maybank' }}</td>
-                <td>{{ $row->staff->bank_account_no ?? 'N/A' }}</td>
-                <td class="remarks-text">{{ $row->allowance_remark ?? '-' }}</td>
+                <td>
+                    <strong>{{ $row->staff->full_name }}</strong><br>
+                    <small>{{ $row->staff->staff_id }}</small>
+                </td>
+                <td class="text-right">{{ number_format($row->basic_salary, 2) }}</td>
+                <td class="text-right">{{ number_format($row->allowances, 2) }}</td>
+                <td class="text-right text-danger">-{{ number_format($totalDeductions, 2) }}</td>
                 <td class="text-right fw-bold">{{ number_format($row->net_salary, 2) }}</td>
+                <td>
+                    {{ $row->staff->bank_name ?? 'N/A' }}<br>
+                    {{ $row->staff->bank_account_no ?? 'N/A' }}
+                </td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    <div class="totals">
-        <div class="totals-box">
-            <h3>GRAND TOTAL: RM {{ number_format($batch->total_amount, 2) }}</h3>
-        </div>
+    <div class="totals-box">
+        <strong>TOTAL DISBURSEMENT: RM {{ number_format($batch->total_amount, 2) }}</strong>
     </div>
 
-    <div class="signatures">
-        <div class="sig-box">
-            <div class="sig-line">
-                <strong>Prepared By:</strong><br>
-                Human Resources Department
-            </div>
-        </div>
-        <div class="sig-box">
-            <div class="sig-line">
-                <strong>Approved By:</strong><br>
-                Finance Director
-            </div>
-        </div>
-        <div class="sig-box" style="margin-right: 0;">
-            <div class="sig-line">
-                <strong>Verified By:</strong><br>
-                Bursary Office
-            </div>
-        </div>
-    </div>
-    <div class="clear"></div>
+    <p style="font-size: 8px; margin-top: 10px;">*Deductions include EPF, SOCSO, EIS, and manual adjustments as calculated by the university strategy components.</p>
 </body>
-
 </html>

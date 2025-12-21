@@ -49,7 +49,7 @@ header('Content-Type: text/html; charset=utf-8');
       if (!res.ok) return;
       const json = JSON.parse(txt);
       const list = Array.isArray(json.data) ? json.data : [];
-      // show timestamp separately if present
+
       if (json.timestamp) {
         debug.textContent = `HTTP ${res.status}\nTimestamp: ${json.timestamp}\n${txt}`;
       }

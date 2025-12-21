@@ -1,3 +1,4 @@
+{{-- Loong Wei Lim --}}
 @extends('layouts.admin')
 
 @section('title', 'Create User')
@@ -19,6 +20,7 @@
             <div class="col-md-6 mb-3">
               <label class="form-label">Password</label>
               <input name="password" type="password" class="form-control @error('password') is-invalid @enderror" required>
+                @error('password') <div class="invalid-feedback">{{ $message }}</div> @enderror
             </div>
 
             <div class="col-md-6 mb-3">
@@ -88,7 +90,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const salaryLabel = document.getElementById('salary_label');
     const salaryInput = document.getElementById('salary_input');
 
-    // Toggle Salary vs Hourly Label
     function updateSalaryUI() {
         const type = empTypeSelect.value;
         if (type === 'Part-Time' || type === 'Intern') {
@@ -98,7 +99,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Auto-Generate Email logic
     nameInput.addEventListener('input', async function() {
         let nameValue = this.value.trim();
         if (nameValue.length < 3) return;

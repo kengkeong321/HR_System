@@ -1,5 +1,5 @@
 <?php
-
+//Loong Wei Lim
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -41,7 +41,7 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'user_name'    => 'required|unique:user,user_name',
+            'user_name'    => 'required|max:50|unique:user,user_name',
             'password'     => 'required|min:6',
             'full_name'    => 'required|string|max:100',
             'email'        => 'required|email|unique:staff,email',
@@ -50,7 +50,6 @@ class UserController extends Controller
         ]);
 
         DB::transaction(function () use ($request) {
-            // 1. Create User
             $user = User::create([
                 'user_name' => $request->user_name,
                 'password'  => hash('sha256', $request->password),
@@ -59,7 +58,7 @@ class UserController extends Controller
             ]);
 
             $user->statusState()->handleStatusChange($user);
-            
+
             $isHourly = in_array($request->employment_type, ['Part-Time', 'Intern']);
 
             Staff::create([

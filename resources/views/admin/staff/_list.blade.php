@@ -1,3 +1,4 @@
+{{-- Loong Wei Lim --}}
 <div class="table-responsive">
     <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
@@ -31,9 +32,9 @@
                 </td>
                 <td>
                     @if($staff->employment_type == 'Full-Time')
-                        ${{ number_format($staff->basic_salary, 2) }} <small>(M)</small>
+                        RM{{ number_format($staff->basic_salary, 2) }} <small>(M)</small>
                     @else
-                        ${{ number_format($staff->hourly_rate, 2) }} <small>(H)</small>
+                        RM{{ number_format($staff->hourly_rate, 2) }} <small>(H)</small>
                     @endif
                 </td>
                 <td>{{ \Carbon\Carbon::parse($staff->join_date)->format('d M Y') }}</td>

@@ -1,3 +1,4 @@
+{{-- Loong Wei Lim --}}
 @extends('layouts.admin')
 
 @section('title', 'Edit Staff Member')
@@ -24,6 +25,12 @@
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Email Address</label>
                     <input type="email" class="form-control bg-light" value="{{ $staff->email }}" readonly>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Phone Number</label>
+                    <input type="text" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $staff->phone) }}">
+                    @error('phone') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 <hr class="my-4">
@@ -72,7 +79,6 @@
                 <h5 class="text-primary mb-3">Account Status & Banking</h5>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Login Status</label>
-                    <p>Debug: User ID is {{ $staff->user_id }}, Status is {{ $staff->user?->status ?? 'NOT FOUND' }}</p>
                     <select name="status" class="form-select">
                         <option value="Active" {{ ($staff->user?->status == 'Active') ? 'selected' : '' }}>
                             Active (Allow Login)
@@ -83,9 +89,37 @@
                     </select>
                 </div>
 
-                <div class="col-md-4 mb-3">
+                <div class="col-md-6 mb-3">
                     <label class="form-label">Bank Name</label>
-                    <input name="bank_name" class="form-control" value="{{ old('bank_name', $staff->bank_name) }}">
+                    <select name="bank_name" class="form-select @error('bank_name') is-invalid @enderror">
+                        <option value="">-- Select Bank --</option>
+                        @php
+                            $malaysiaBanks = [
+                                'Maybank' => 'Malayan Banking Berhad (Maybank)',
+                                'CIMB' => 'CIMB Bank Berhad',
+                                'Public Bank' => 'Public Bank Berhad',
+                                'RHB' => 'RHB Bank Berhad',
+                                'Hong Leong' => 'Hong Leong Bank Berhad',
+                                'AmBank' => 'AmBank Group',
+                                'UOB' => 'United Overseas Bank (Malaysia)',
+                                'OCBC' => 'OCBC Bank (Malaysia)',
+                                'HSBC' => 'HSBC Bank Malaysia',
+                                'Standard Chartered' => 'Standard Chartered Bank Malaysia',
+                                'Alliance Bank' => 'Alliance Bank Malaysia Berhad',
+                                'Affim Bank' => 'Affin Bank Berhad',
+                                'Bank Islam' => 'Bank Islam Malaysia Berhad',
+                                'Bank Muamalat' => 'Bank Muamalat Malaysia Berhad',
+                                'Agrobank' => 'Pertanian Bank Malaysia Berhad (Agrobank)',
+                                'BSN' => 'Bank Simpanan Nasional (BSN)'
+                            ];
+                        @endphp
+                        @foreach($malaysiaBanks as $code => $name)
+                        <option value="{{ $code }}" {{ old('bank_name', $staff->bank_name) == $code ? 'selected' : '' }}>
+                            {{ $name }}
+                        </option>
+                        @endforeach
+                    </select>
+                    @error('bank_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
 
                 <div class="col-md-4 mb-3">
@@ -102,7 +136,6 @@
 </div>
 
 <script>
-    // Toggle fields on load and change
     function toggleRates() {
         const type = document.getElementById('employment_type').value;
         document.getElementById('basic_salary_group').style.display = (type === 'Part-Time') ? 'none' : 'block';
