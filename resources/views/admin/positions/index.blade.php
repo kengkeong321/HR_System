@@ -1,5 +1,5 @@
 @extends('layouts.admin')
-
+{{-- Woo Keng Keong --}}
 @section('title', 'Positions')
 
 @section('content')
@@ -11,8 +11,4 @@
   <div id="positions-list" class="ajax-paginate" data-url="{{ route('admin.positions.page') }}">
     @include('admin.positions._list', ['positions' => $positions])
   </div>
-
-  <script>
-    // no modal needed for positions at the moment
-  </script>
 @endsection

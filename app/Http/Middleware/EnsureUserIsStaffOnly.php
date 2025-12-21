@@ -12,33 +12,32 @@ class EnsureUserIsStaffOnly
     {
         $userId = $request->session()->get('user_id');
 
-        //handle not logged in
+        // Not logged in
         if (! $userId) {
-            $request->session()->flush();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('login')->withErrors(['auth' => 'Please login first.']);
+            return $this->logoutAndRedirectToLogin($request, 'Please login first.');
         }
-    
-        //handle not staff
+
+        // Find user
         $user = User::find($userId);
-        
+        if (! $user) {
+            return $this->logoutAndRedirectToLogin($request, 'Please login first.');
+        }
+
+        // Not staff
         if ($user->role !== 'Staff') {
-            if ($user->role === 'Admin') {
-                $request->session()->flush();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
-                return redirect()->route('login')->withErrors(['access' => 'Staff access required']);
-            }
-
-            $request->session()->flush();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return redirect()->route('login')->withErrors(['access' => 'Staff access required']);
+            return $this->logoutAndRedirectToLogin($request, 'Staff access required', 'access');
         }
 
         return $next($request);
+    }
+
+    // Helper to logout and redirect to login with error
+    protected function logoutAndRedirectToLogin(Request $request, string $message, string $key = 'auth')
+    {
+        $request->session()->flush();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->withErrors([$key => $message]);
     }
 }

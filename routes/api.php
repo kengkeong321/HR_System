@@ -17,6 +17,16 @@ Route::get('/staff', function () {
 });
 
 
+// Return staff details (Woo Keng Keong)
+Route::get('/staff/{id}', function ($id) {
+    $s = Staff::with(['user', 'department'])->find($id);
+    if (! $s) {
+        return response()->json(['timestamp' => now()->format('Y-m-d H:i:s'), 'error' => 'Staff not found'], 404);
+    }
+    return response()->json(['timestamp' => now()->format('Y-m-d H:i:s'), 'data' => $s]);
+});
+
+
 //Mu Jun Yi
 Route::get('/attendance/summary', function (Request $request) {
     

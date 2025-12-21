@@ -25,9 +25,7 @@ class EnsureUserIsAdmin
         $allowedRoles = ['Admin', 'HR', 'Finance'];
 
         if (!$user || !in_array($user->role, $allowedRoles)) {
-            // If the user exists but their role isn't in our list, block them
-            // Note: You might NOT want to clearSession here if you want them to stay 
-            // logged in as Staff but just deny them this specific page.
+           $this->clearSession($request);
             return redirect()->route('login')->withErrors(['access' => 'Authorized personnel only.']);
         }
 

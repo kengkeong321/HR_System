@@ -1,5 +1,6 @@
 <?php
 
+//Woo Keng Keong
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -14,10 +15,19 @@ class DepartmentController extends Controller
 
     public function assign(string $department)
     {
-        $department = $this->depRepo->find($department);
+        $department = $this->depRepo->getWithCourses($department);
+        $department->load('faculty');
         $courses = $this->courseRepo->activeOrderedByName();
         $selected = $department->courses->pluck('course_id')->toArray();
         return view('admin.departments.assign', compact('department','courses','selected'));
+    }
+
+
+    public function assignStaff(string $department)
+    {
+        $department = $this->depRepo->find($department);
+        $department->load('faculty');
+        return view('admin.departments.assign_staff', compact('department'));
     }
 
     public function assignStore(Request $request, string $department)
@@ -98,7 +108,6 @@ class DepartmentController extends Controller
     }
     public function destroy(string $department)
     {
-        // Delete disabled — prefer status toggle
         return redirect()->route('admin.departments.index')->with('error', 'Delete operation is disabled. Use status to set Inactive');
     }
 
@@ -112,25 +121,41 @@ class DepartmentController extends Controller
         }
     }
 
-    // Return assigned courses for department (AJAX used by modal)
     public function assignments(string $department)
     {
         try {
             $d = $this->depRepo->getWithCourses($department);
+            $d->load('faculty');
             $courses = $d->courses->map(function($c) {
                 return ['course_id' => $c->course_id, 'course_name' => $c->course_name];
             })->values();
 
             return response()->json([
-                'department' => ['depart_id' => $d->depart_id, 'depart_name' => $d->depart_name],
+                'department' => ['depart_id' => $d->depart_id, 'depart_name' => $d->depart_name, 'faculty_name' => $d->faculty->faculty_name ?? null],
                 'courses' => $courses,
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json(['error' => 'Department not found'], 404);
         } catch (\Throwable $e) {
-            // Log and return a friendly error message
             logger()->error('Error fetching department assignments: '.$e->getMessage(), ['department' => $department]);
             return response()->json(['error' => 'Unable to load assignments'], 500);
+        }
+    }
+
+    public function assignStaffStore(Request $request, string $department)
+    {
+        $data = $request->validate([
+            'staff_id' => 'required|exists:staff,staff_id',
+        ]);
+
+        try {
+            $staff = \App\Models\Staff::findOrFail($data['staff_id']);
+            $staff->depart_id = $department;
+            $staff->save();
+
+            return redirect()->route('admin.departments.index')->with('success', 'Staff assigned to department');
+        } catch (\Throwable $e) {
+            return redirect()->route('admin.departments.assign', $department)->with('error', $e->getMessage());
         }
     }
 

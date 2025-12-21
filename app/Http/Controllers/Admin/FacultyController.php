@@ -1,5 +1,5 @@
 <?php
-
+//Woo Keng Keong
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -13,7 +13,6 @@ class FacultyController extends Controller
     public function index(Request $request)
     {
         $page = null;
-        // Only accept page param when navigation comes from our pagination links
         if ($request->has('page') && $request->query('from_nav') === '1') {
             $page = (int) $request->query('page');
             session(['admin.faculties.page' => $page]);
@@ -70,7 +69,6 @@ class FacultyController extends Controller
 
     public function destroy(string $faculty)
     {
-        // Delete disabled — prefer status toggle
         return redirect()->route('admin.faculties.index')->with('error', 'Delete operation is disabled. Use status to set Inactive');
     }
 
@@ -84,7 +82,6 @@ class FacultyController extends Controller
         }
     }
 
-    // Return active departments for a faculty (AJAX for modal)
     public function departments(string $faculty)
     {
         $f = $this->facRepo->getWithDepartments($faculty);
