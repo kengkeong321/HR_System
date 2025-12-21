@@ -128,12 +128,14 @@ const nameInput = document.getElementById('full_name');
         let nameValue = this.value.trim();
         if (nameValue.length < 3) return;
 
+        // 1. Generate Base Handle (e.g., loongwl)
         let parts = nameValue.split(/\s+/);
         let firstName = parts[0].toLowerCase();
         let initials = parts.slice(1).map(p => p[0].toLowerCase()).join('');
         let baseHandle = firstName + initials;
         let domain = "@tarc.edu.my";
 
+        // 2. AJAX Check for uniqueness
         let currentHandle = baseHandle;
         let counter = 1;
         let isUnique = false;
@@ -148,6 +150,7 @@ const nameInput = document.getElementById('full_name');
                 emailInput.value = emailToCheck;
                 isUnique = true;
                 
+                // Show warning if a number was added
                 if (counter > 1) {
                     emailInput.classList.add('is-warning');
                     feedback.style.display = 'block';
@@ -157,11 +160,12 @@ const nameInput = document.getElementById('full_name');
                     feedback.style.display = 'none';
                 }
             } else {
-                counter++; 
+                counter++; // Keep incrementing until a free email is found
             }
         }
     });
     
+    // Logic to toggle Salary vs Hourly Rate fields
     document.getElementById('employment_type').addEventListener('change', function() {
         const salaryGroup = document.getElementById('basic_salary_group');
         const hourlyGroup = document.getElementById('hourly_rate_group');

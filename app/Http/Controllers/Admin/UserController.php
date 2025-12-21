@@ -50,7 +50,7 @@ class UserController extends Controller
         ]);
 
         DB::transaction(function () use ($request) {
-
+            // 1. Create User
             $user = User::create([
                 'user_name' => $request->user_name,
                 'password'  => hash('sha256', $request->password),
@@ -58,8 +58,7 @@ class UserController extends Controller
                 'status'    => $request->status,
             ]);
 
-            $user->statusState()->handleStatusChange($user);
-
+            // 2. Create Staff info for EVERYONE
             $isHourly = in_array($request->employment_type, ['Part-Time', 'Intern']);
 
             Staff::create([
@@ -103,6 +102,7 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        // Delete disabled — prefer status toggle
         return redirect()->route('admin.users.index')->with('error', 'Delete operation is disabled. Use status to set Inactive');
     }
 
@@ -110,7 +110,6 @@ class UserController extends Controller
     {
         $user->status = $user->status === 'Active' ? 'Inactive' : 'Active';
         $user->save();
-        $user->statusState()->handleStatusChange($user);
         return redirect()->route('admin.users.index')->with('success', 'User status updated');
     }
 }
