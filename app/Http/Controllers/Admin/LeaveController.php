@@ -1,5 +1,5 @@
 <?php
-
+// Mu Jun Yi
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 
 class LeaveController extends Controller
 {
-    // STAFF: Display leave form and history
     public function staffIndex()
     {
         $userId = session('user_id');
@@ -38,7 +37,7 @@ class LeaveController extends Controller
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
             'reason' => $request->reason,
-            'status' => 'Pending', // Initial State
+            'status' => 'Pending', 
             'created_at' => now(),
         ]);
 
@@ -47,7 +46,6 @@ class LeaveController extends Controller
 
    public function adminIndex()
     {
-        // Fetching data for the Observer (Admin)
         $leaves = DB::table('leave_table')
             ->join('user', 'leave_table.user_id', '=', 'user.user_id')
             ->select('leave_table.*', 'user.user_name as staff_name')

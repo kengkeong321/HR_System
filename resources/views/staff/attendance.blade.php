@@ -3,6 +3,7 @@
 @section('title', 'Mark My Attendance')
 
 @section('content')
+{{-- Mu Jun Yi --}}
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3 class="fw-bold"><i class="bi bi-clock-history me-2 text-primary"></i>My Attendance</h3>

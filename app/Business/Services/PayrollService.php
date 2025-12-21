@@ -1,4 +1,5 @@
 <?php
+//Dephnie Ong Yan Yee
 
 namespace App\Business\Services;
 
@@ -6,27 +7,31 @@ use App\Models\Staff;
 use App\Models\Payroll;
 use App\Models\Claim;
 use App\Models\PayrollBatch;
+use App\Models\Attendance;
 use Illuminate\Support\Facades\DB;
 use App\Business\Strategies\EPFStrategy;
 use App\Business\Strategies\SocsoTableStrategy;
 use App\Business\Strategies\Contracts\SalaryComponentInterface;
+use Carbon\Carbon;
 
 class PayrollService
 {
     protected $strategies = [];
+
+    public function __construct()
+    {
+        $this->strategies['epf'] = new EPFStrategy();
+        $this->strategies['socso'] = new SocsoTableStrategy();
+    }
 
     public function registerComponent(string $key, SalaryComponentInterface $strategy)
     {
         $this->strategies[$key] = $strategy;
     }
 
-    public function __construct()
-    {
-        // These strategies handle the complex Malaysian statutory tables
-        $this->strategies['epf'] = new EPFStrategy();
-        $this->strategies['socso'] = new SocsoTableStrategy();
-    }
-
+    /**
+     * total approved claims (month)
+     */
     public function getApprovedClaimsTotal($staffId, $month, $year)
     {
         return Claim::where('staff_id', $staffId)
@@ -35,44 +40,57 @@ class PayrollService
             ->whereYear('created_at', $year)
             ->sum('amount');
     }
-    
 
-public function calculateAndSavePayroll(Staff $staff, int $month, int $year, int $batchId, array $manualInputs = [])
+
+    public function calculateAndSavePayroll(Staff $staff, int $month, int $year, int $batchId, array $manualInputs = [])
     {
         $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
-    
-        $staffEpfRate = (float) ($configs['staff_epf_rate'] ?? 11.0) / 100;
-        $eisRate = (float) ($configs['eis_rate'] ?? 0.2) / 100;
-        $socsoCeiling = (float) ($configs['socso_ceiling'] ?? 6000.0);
+        $otStrategy = new \App\Business\Strategies\OvertimeStrategy();
 
-        $basic = (float) ($manualInputs['basic_salary'] ?? $staff->basic_salary);
-        $totalAllowances = (float) ($manualInputs['total_allowances'] ?? 0);
-        
-        $manualDeduction = (float) ($manualInputs['manual_deduction'] ?? 0);
-
-        // Statutory Calculations
-        if ($basic > 0) {
-            $epfEmployee = $basic * $staffEpfRate;
-            
-            // SOCSO/EIS capped by dynamic ceiling
-            $salaryForStatutory = min($basic, $socsoCeiling);
-            
-            $socsoEmployee = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employee']);
-            $eisEmployee = $salaryForStatutory * $eisRate;
-
-            $threshold = (float) ($configs['employer_epf_threshold'] ?? 5000.0);
-            $employerRateKey = $basic <= $threshold ? 'employer_epf_rate_low' : 'employer_epf_rate_high';
-            $employerEpfRate = (float) ($configs[$employerRateKey] ?? 13.0) / 100;
-            
-            $epfEmployer = $basic * $employerEpfRate;
-            $socsoEmployer = $this->strategies['socso']->calculate($staff, ['basic_salary' => $salaryForStatutory, 'type' => 'employer']);
-            $eisEmployer = $salaryForStatutory * $eisRate;
+        // basic salary
+        if ($staff->employment_type === 'Part-Time') {
+            $totalWorkedHours = $this->calculateTotalWorkedHours($staff->user_id, $month, $year);
+            $basic = (float) ($totalWorkedHours * $staff->hourly_rate);
         } else {
-            $epfEmployee = $epfEmployer = $socsoEmployee = $socsoEmployer = $eisEmployee = $eisEmployer = 0;
+            $basic = (float) ($manualInputs['basic_salary'] ?? $staff->basic_salary);
         }
 
-        // final 
-        $totalDeductions = $epfEmployee + $socsoEmployee + $eisEmployee + $manualDeduction;
+        // ot
+        $workDays = (float) ($configs['standard_work_days'] ?? 26);
+        $workHours = (float) ($configs['standard_work_hours'] ?? 8);
+
+        $hourlyRate = $staff->hourly_rate ?: ($basic / $workDays / $workHours);
+        $otHours = $this->calculateAttendanceOt($staff, $month, $year);
+        $otAmount = $otStrategy->calculate($hourlyRate, $otHours, 'normal');
+
+        // claims  
+        $approvedClaims = $this->getApprovedClaimsTotal($staff->staff_id, $month, $year);
+        $totalAllowances = $approvedClaims + $otAmount + (float) ($manualInputs['total_allowances'] ?? 0);
+
+        $manualDeduction = (float) ($manualInputs['manual_deduction'] ?? 0);
+        $totalStatutoryDeductions = 0;
+        $breakdown = ['ot_amount' => round($otAmount, 2)];
+
+        // statutory calculations (EPF, SOCSO, EIS)
+        if ($basic > 0) {
+            // EPF
+            $epfData = $this->strategies['epf']->calculate($staff, ['month' => $month, 'year' => $year, 'calculated_basic' => $basic]);
+            $totalStatutoryDeductions += $epfData['epf_employee_rm'] ?? 0;
+            $breakdown = array_merge($breakdown, $epfData);
+
+            // SOCSO & EIS 
+            $socsoEisData = $this->strategies['socso']->calculate($staff, [
+                'total_hours' => $totalWorkedHours ?? 0,
+                'calculated_basic' => $basic
+            ]);
+
+            $totalStatutoryDeductions += ($socsoEisData['socso_employee_rm'] ?? 0);
+            $totalStatutoryDeductions += ($socsoEisData['eis_employee_rm'] ?? 0);
+            $breakdown = array_merge($breakdown, $socsoEisData);
+        }
+
+        // net salary
+        $totalDeductions = $totalStatutoryDeductions + $manualDeduction;
         $netSalary = ($basic + $totalAllowances) - $totalDeductions;
 
         return Payroll::updateOrCreate(
@@ -82,72 +100,69 @@ public function calculateAndSavePayroll(Staff $staff, int $month, int $year, int
                 'basic_salary' => round($basic, 2),
                 'allowances' => round($totalAllowances, 2),
                 'deduction' => round($totalDeductions, 2),
-                'manual_deduction' => round($manualDeduction, 2), 
+                'manual_deduction' => round($manualDeduction, 2),
                 'net_salary' => round($netSalary, 2),
                 'status' => 'Draft',
-                'breakdown' => [
-                    'calculated_amounts' => [
-                        'epf_employee_rm' => round($epfEmployee, 2),
-                        'epf_employer_rm' => round($epfEmployer, 2),
-                        'socso_employee_rm' => round($socsoEmployee, 2),
-                        'socso_employer_rm' => round($socsoEmployer, 2),
-                        'eis_employee_rm' => round($eisEmployee, 2),
-                        'eis_employer_rm' => round($eisEmployer, 2),
-                    ]
-                ],
+                'breakdown' => json_encode(['calculated_amounts' => $breakdown]),
                 'allowance_remark' => $manualInputs['allowance_remark'] ?? null,
                 'deduction_remark' => $manualInputs['deduction_remark'] ?? null,
             ]
         );
     }
 
-   public function updateBatchTotals($batchId)
+    /**
+     * hour calculation 
+     */
+    public function calculateTotalWorkedHours($userId, $month, $year)
     {
-        $freshTotals = Payroll::where('batch_id', $batchId)
-            ->selectRaw('SUM(net_salary) as total_disbursement, COUNT(*) as count')
-            ->first();
-
-        PayrollBatch::where('id', $batchId)->update([
-            'total_amount' => round($freshTotals->total_disbursement, 2),
-            'total_staff' => $freshTotals->count,
-        ]);
+        return DB::table('attendances')
+            ->where('user_id', $userId)
+            ->whereYear('attendance_date', $year)
+            ->whereMonth('attendance_date', $month)
+            ->where('status', 'Present')
+            ->whereNotNull('clock_out_time')
+            ->selectRaw('SUM(TIMESTAMPDIFF(SECOND, clock_in_time, clock_out_time)) / 3600 as hours')
+            ->value('hours') ?? 0;
     }
 
     /**
-     * Helper: Calculate OT from attendance records
+     * calculation for full time ot
      */
-    private function calculateAttendanceOt(Staff $staff, $month, $year)
+    public function calculateAttendanceOt(Staff $staff, $month, $year)
     {
         $configs = DB::table('payroll_configs')->pluck('config_value', 'config_key');
         $standardDailyHours = $configs['standard_work_hours'] ?? 9;
-        $breakTimeHours = $configs['break_time_hours'] ?? 1;
 
-        $attendances = \App\Models\Attendance::where('user_id', $staff->user_id)
+        $attendances = Attendance::where('user_id', $staff->user_id)
             ->whereYear('attendance_date', $year)
             ->whereMonth('attendance_date', $month)
             ->whereNotNull('clock_out_time')
-            ->whereNotNull('clock_in_time')
             ->get();
 
         $totalOtHours = 0;
-
         foreach ($attendances as $record) {
-            $clockIn = \Carbon\Carbon::parse($record->clock_in_time);
-            $clockOut = \Carbon\Carbon::parse($record->clock_out_time);
+            $in = Carbon::parse($record->clock_in_time);
+            $out = Carbon::parse($record->clock_out_time);
+            $hoursWorked = $out->floatDiffInHours($in);
 
-            $hoursWorked = $clockOut->floatDiffInHours($clockIn);
-
-            // Deduct break time if applicable
-            if ($staff->auto_deduct_break && $hoursWorked > 5) {
-                $hoursWorked -= $breakTimeHours;
-            }
-
-            // Calculate OT
             if ($hoursWorked > $standardDailyHours) {
                 $totalOtHours += ($hoursWorked - $standardDailyHours);
             }
         }
-
         return $totalOtHours;
+    }
+
+    public function updateBatchTotals(int $batchId): void
+    {
+        $totalAmount = DB::table('payrolls')
+            ->where('batch_id', $batchId)
+            ->sum('net_salary');
+
+        DB::table('payroll_batches')
+            ->where('id', $batchId)
+            ->update([
+                'total_amount' => $totalAmount,
+                'updated_at'   => now(),
+            ]);
     }
 }

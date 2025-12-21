@@ -1,6 +1,7 @@
+{{-- Dephnie Ong Yan Yee --}}
+
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Payroll Disbursement Report - {{ $batch->month_year }}</title>
     <style>
@@ -13,7 +14,6 @@
         th, td { border: 1px solid #ccc; padding: 10px 6px; text-align: left; word-wrap: break-word; }
         th { background-color: #f8f9fa; font-weight: bold; text-transform: uppercase; font-size: 10px; color: #444; }
         
-        /* Alternating row colors for better readability */
         tbody tr:nth-child(even) { background-color: #fafafa; }
         
         .text-right { text-align: right; }
