@@ -161,7 +161,7 @@ Route::middleware(['auth', 'role:HR,Finance,Admin'])->prefix('admin')->name('adm
 
 
 
-// Positions API (Active only) - returns active positions list for dropdowns
+// Positions API (Active only) 
 Route::get('/api/positions', [\App\Http\Controllers\Api\PositionController::class, 'index'])->name('api.positions.index');
 
 // Staff routes
